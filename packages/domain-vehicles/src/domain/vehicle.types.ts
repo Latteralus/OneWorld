@@ -27,6 +27,8 @@ export interface PlayerVehicle {
   fuelGallons: number;
   condition: string;
   estimatedValueCents: Cents;
+  weeklyMaintenanceCents: Cents;
+  nextMaintenanceDueAt: Date;
 }
 
 /**
@@ -51,6 +53,7 @@ export interface GrantStartingVehicleInput {
   statusScore: number;
   mileageMin: number;
   mileageMax: number;
+  nextMaintenanceDueAt: Date;
 }
 
 /** Repository interface owned by this domain (spec section 20.4). */
@@ -73,11 +76,17 @@ export interface VehicleRepository {
     vehicleTypeId: string;
     /** Carried through onto the returned `PlayerVehicle` (the DB row only stores the FK id). */
     vehicleTypeKey: string;
+    weeklyMaintenanceCents: Cents;
     currentCityId: CityId;
     mileage: number;
     fuelGallons: number;
     condition: string;
     estimatedValueCents: Cents;
+    nextMaintenanceDueAt: Date;
   }): Promise<PlayerVehicle>;
   findVehicleForPlayer(playerId: PlayerId): Promise<PlayerVehicle | undefined>;
+  /** Vehicles with an unresolved maintenance charge due: `nextMaintenanceDueAt <= now`. */
+  listVehiclesDueForMaintenance(now: Date): Promise<PlayerVehicle[]>;
+  /** Called only after a successful charge - a failed charge leaves the due date untouched so the next sweep retries it. */
+  advanceMaintenance(vehicleId: VehicleId, nextMaintenanceDueAt: Date): Promise<void>;
 }

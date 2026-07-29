@@ -56,11 +56,13 @@ export class InMemoryVehicleRepository implements VehicleRepository {
     playerId: PlayerId;
     vehicleTypeId: string;
     vehicleTypeKey: string;
+    weeklyMaintenanceCents: Cents;
     currentCityId: CityId;
     mileage: number;
     fuelGallons: number;
     condition: string;
     estimatedValueCents: Cents;
+    nextMaintenanceDueAt: Date;
   }): Promise<PlayerVehicle> {
     const vehicle: PlayerVehicle = {
       id: nextId("vehicle") as VehicleId,
@@ -70,6 +72,8 @@ export class InMemoryVehicleRepository implements VehicleRepository {
       fuelGallons: input.fuelGallons,
       condition: input.condition,
       estimatedValueCents: input.estimatedValueCents,
+      weeklyMaintenanceCents: input.weeklyMaintenanceCents,
+      nextMaintenanceDueAt: input.nextMaintenanceDueAt,
     };
     this.vehicles.set(vehicle.id, vehicle);
     return vehicle;
@@ -77,6 +81,16 @@ export class InMemoryVehicleRepository implements VehicleRepository {
 
   async findVehicleForPlayer(playerId: PlayerId): Promise<PlayerVehicle | undefined> {
     return [...this.vehicles.values()].find((vehicle) => vehicle.ownerId === playerId);
+  }
+
+  async listVehiclesDueForMaintenance(now: Date): Promise<PlayerVehicle[]> {
+    return [...this.vehicles.values()].filter((v) => v.nextMaintenanceDueAt.getTime() <= now.getTime());
+  }
+
+  async advanceMaintenance(vehicleId: VehicleId, nextMaintenanceDueAt: Date): Promise<void> {
+    const existing = this.vehicles.get(vehicleId);
+    if (!existing) throw new Error(`Unknown vehicle: ${vehicleId}`);
+    this.vehicles.set(vehicleId, { ...existing, nextMaintenanceDueAt });
   }
 
   vehicleTypeCount(): number {

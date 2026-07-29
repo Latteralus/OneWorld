@@ -21,6 +21,20 @@ export interface Notification {
   createdAt: Date;
 }
 
+export interface CreateNotificationInput {
+  playerId: PlayerId;
+  type: NotificationType;
+  title: string;
+  body: string;
+  relatedType?: string;
+  relatedId?: string;
+}
+
+/** Repository interface owned by this domain (spec section 20.4). */
+export interface NotificationRepository {
+  insertNotification(input: CreateNotificationInput): Promise<Notification>;
+}
+
 /** Maps a subset of domain events to the notification they should produce (spec section 24.3). */
 export type NotifiableEventType = Extract<
   DomainEventType,

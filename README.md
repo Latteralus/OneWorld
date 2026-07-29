@@ -82,6 +82,7 @@ pnpm db:studio       # inspect data with Drizzle Studio
 
 pnpm world:import-airports  # import the canonical airport catalog (run first)
 pnpm world:seed-cities      # seed starting cities and their airport links (run after)
+pnpm world:seed-jobs        # seed starting job postings (run after seed-cities)
 ```
 
 Run a command against a single package with `pnpm --filter <name> <script>`,

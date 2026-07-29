@@ -24,6 +24,7 @@
     "db:studio": "pnpm --filter @oneworld/db studio",
     "world:import-airports": "pnpm --filter @oneworld/data-import-airports import-airports",
     "world:seed-cities": "pnpm --filter @oneworld/domain-locations seed",
+    "world:seed-jobs": "pnpm --filter @oneworld/domain-employment seed",
     "changeset": "changeset",
     "prepare": "node -e \"if (!process.env.CI) { try { require('husky').install() } catch (e) {} }\""
   },

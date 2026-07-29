@@ -62,6 +62,16 @@ export const employmentConfig = {
   /** Daily payroll time in the display timezone (24h, section 8.7 / 35.10). */
   payrollHourLocal: 9,
   jobTemplates: employmentJobTemplates,
+  /**
+   * Seeded-posting supply (spec doesn't define a generation cadence for
+   * the preview - placeholder, see the Phase 2 change log entry): one
+   * long-lived posting per template per starting city, replenished by
+   * re-running the seed script rather than a recurring worker job.
+   */
+  seedPostingOpenings: 50,
+  seedPostingValidityDays: 90,
+  /** Category recorded on every seeded `job_templates` row (all preview jobs are civilian, section 8.1). */
+  seedPostingCategory: "civilian",
 } as const;
 
 export type EmploymentConfig = typeof employmentConfig;

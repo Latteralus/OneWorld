@@ -132,6 +132,9 @@ export class OnboardingService {
       statusScore: onboardingConfig.startingVehicle.statusScore,
       mileageMin: onboardingConfig.startingVehicle.startingMileageMin,
       mileageMax: onboardingConfig.startingVehicle.startingMileageMax,
+      // Mirrors the first-week rent protection (spec section 6.6): the
+      // first maintenance charge isn't due immediately after account creation.
+      nextMaintenanceDueAt: addDays(now, 7),
     });
 
     const { qualification } = await this.deps.qualificationService.grantStartingQualification({

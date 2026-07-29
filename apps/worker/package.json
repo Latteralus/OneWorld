@@ -23,11 +23,13 @@
     "@oneworld/domain-employment": "workspace:*",
     "@oneworld/domain-finance": "workspace:*",
     "@oneworld/domain-housing": "workspace:*",
+    "@oneworld/domain-notifications": "workspace:*",
     "@oneworld/domain-passengers": "workspace:*",
     "@oneworld/domain-time": "workspace:*",
     "@oneworld/domain-training": "workspace:*",
     "@oneworld/domain-travel": "workspace:*",
-    "@oneworld/domain-vehicles": "workspace:*"
+    "@oneworld/domain-vehicles": "workspace:*",
+    "@oneworld/utils": "workspace:*"
   },
   "devDependencies": {
     "@oneworld/testing": "workspace:*",

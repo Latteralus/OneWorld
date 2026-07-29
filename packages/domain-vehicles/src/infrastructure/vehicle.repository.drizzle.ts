@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, lte } from "drizzle-orm";
 import type { DbOrTx } from "@oneworld/db";
 import { schema } from "@oneworld/db";
 import { cents } from "@oneworld/utils";
@@ -14,6 +14,7 @@ import type {
 function toDomainVehicle(
   row: typeof schema.playerVehicles.$inferSelect,
   vehicleTypeKey: string,
+  weeklyMaintenanceCents: Cents,
 ): PlayerVehicle {
   return {
     id: row.id as VehicleId,
@@ -23,6 +24,11 @@ function toDomainVehicle(
     fuelGallons: row.fuelGallons,
     condition: row.condition,
     estimatedValueCents: cents(row.estimatedValueCents),
+    weeklyMaintenanceCents,
+    // Only unset between vehicle grant and the first maintenance sweep in
+    // theory; grantStartingVehicle always sets it, so this should never be
+    // reached in practice, but the column is nullable in the schema.
+    nextMaintenanceDueAt: row.nextMaintenanceDueAt ?? row.createdAt,
   };
 }
 
@@ -78,11 +84,13 @@ export class DrizzleVehicleRepository implements VehicleRepository {
     playerId: PlayerId;
     vehicleTypeId: string;
     vehicleTypeKey: string;
+    weeklyMaintenanceCents: Cents;
     currentCityId: CityId;
     mileage: number;
     fuelGallons: number;
     condition: string;
     estimatedValueCents: Cents;
+    nextMaintenanceDueAt: Date;
   }): Promise<PlayerVehicle> {
     const [inserted] = await this.db
       .insert(schema.playerVehicles)
@@ -94,21 +102,53 @@ export class DrizzleVehicleRepository implements VehicleRepository {
         fuelGallons: input.fuelGallons,
         condition: input.condition,
         estimatedValueCents: input.estimatedValueCents,
+        nextMaintenanceDueAt: input.nextMaintenanceDueAt,
       })
       .returning();
     if (!inserted) throw new Error("Failed to insert player vehicle");
-    return toDomainVehicle(inserted, input.vehicleTypeKey);
+    return toDomainVehicle(inserted, input.vehicleTypeKey, input.weeklyMaintenanceCents);
   }
 
   async findVehicleForPlayer(playerId: PlayerId): Promise<PlayerVehicle | undefined> {
     const [row] = await this.db
-      .select({ vehicle: schema.playerVehicles, vehicleTypeKey: schema.vehicleTypes.key })
+      .select({
+        vehicle: schema.playerVehicles,
+        vehicleTypeKey: schema.vehicleTypes.key,
+        weeklyMaintenanceCents: schema.vehicleTypes.weeklyMaintenanceCents,
+      })
       .from(schema.playerVehicles)
       .innerJoin(
         schema.vehicleTypes,
         eq(schema.playerVehicles.vehicleTypeId, schema.vehicleTypes.id),
       )
       .where(eq(schema.playerVehicles.playerId, playerId));
-    return row ? toDomainVehicle(row.vehicle, row.vehicleTypeKey) : undefined;
+    return row
+      ? toDomainVehicle(row.vehicle, row.vehicleTypeKey, cents(row.weeklyMaintenanceCents))
+      : undefined;
+  }
+
+  async listVehiclesDueForMaintenance(now: Date): Promise<PlayerVehicle[]> {
+    const rows = await this.db
+      .select({
+        vehicle: schema.playerVehicles,
+        vehicleTypeKey: schema.vehicleTypes.key,
+        weeklyMaintenanceCents: schema.vehicleTypes.weeklyMaintenanceCents,
+      })
+      .from(schema.playerVehicles)
+      .innerJoin(
+        schema.vehicleTypes,
+        eq(schema.playerVehicles.vehicleTypeId, schema.vehicleTypes.id),
+      )
+      .where(lte(schema.playerVehicles.nextMaintenanceDueAt, now));
+    return rows.map((row) =>
+      toDomainVehicle(row.vehicle, row.vehicleTypeKey, cents(row.weeklyMaintenanceCents)),
+    );
+  }
+
+  async advanceMaintenance(vehicleId: VehicleId, nextMaintenanceDueAt: Date): Promise<void> {
+    await this.db
+      .update(schema.playerVehicles)
+      .set({ nextMaintenanceDueAt })
+      .where(eq(schema.playerVehicles.id, vehicleId));
   }
 }

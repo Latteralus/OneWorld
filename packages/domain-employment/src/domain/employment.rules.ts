@@ -1,5 +1,5 @@
-import { addHours, addMinutes } from "@oneworld/utils";
-import { employmentConfig, type EmploymentAvailability } from "@oneworld/config";
+import { addMinutes, nextLocalHourInstantUtc } from "@oneworld/utils";
+import { employmentConfig, gameClockConfig, type EmploymentAvailability } from "@oneworld/config";
 
 /**
  * A player may hold exactly one active job (spec section 8.2). Callers
@@ -38,20 +38,15 @@ export function resolveApplicationAcceptance(
 
 /**
  * Next daily payroll instant at the configured local hour (spec section
- * 8.7, 35.10). Simplified to a fixed UTC hour for Phase 0; a DST-aware
- * conversion against `gameClockConfig.defaultDisplayTimezone` is needed
- * before this ships (America/New_York shifts by an hour across DST).
+ * 8.7, 35.10) - DST-aware against `gameClockConfig.defaultDisplayTimezone`
+ * so the UTC instant shifts by one hour across a DST transition instead of
+ * drifting the wall-clock payroll time.
  */
 export function calculateNextPayrollAt(
   fromUtc: Date,
   payrollHourLocal = employmentConfig.payrollHourLocal,
 ): Date {
-  const next = new Date(fromUtc);
-  next.setUTCHours(payrollHourLocal, 0, 0, 0);
-  if (next.getTime() <= fromUtc.getTime()) {
-    return addHours(next, 24);
-  }
-  return next;
+  return nextLocalHourInstantUtc(fromUtc, payrollHourLocal, gameClockConfig.defaultDisplayTimezone);
 }
 
 export function isPayrollDue(nextPayAt: Date, referenceNow: Date): boolean {

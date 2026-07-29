@@ -37,6 +37,7 @@ export class InMemoryHousingRepository implements HousingRepository {
     playerId: PlayerId;
     residenceTypeId: string;
     residenceTypeKey: string;
+    weeklyRentCents: Cents;
     cityId: CityId;
     tenancyStatus: string;
     nextRentDueAt: Date;
@@ -45,9 +46,11 @@ export class InMemoryHousingRepository implements HousingRepository {
       id: nextId("residence") as ResidenceId,
       playerId: input.playerId,
       residenceTypeKey: input.residenceTypeKey,
+      weeklyRentCents: input.weeklyRentCents,
       cityId: input.cityId,
       tenancyStatus: input.tenancyStatus,
       nextRentDueAt: input.nextRentDueAt,
+      graceDeadlineAt: undefined,
     };
     this.residences.set(residence.id, residence);
     return residence;
@@ -57,6 +60,28 @@ export class InMemoryHousingRepository implements HousingRepository {
     return [...this.residences.values()].find(
       (r) => r.playerId === playerId && r.tenancyStatus === "ACTIVE",
     );
+  }
+
+  async listResidencesDueForRentSweep(now: Date): Promise<PlayerResidence[]> {
+    return [...this.residences.values()].filter(
+      (r) => r.tenancyStatus !== "UNHOUSED" && r.nextRentDueAt.getTime() <= now.getTime(),
+    );
+  }
+
+  async updateTenancyOutcome(
+    residenceId: ResidenceId,
+    input: { tenancyStatus: string; nextRentDueAt: Date; graceDeadlineAt: Date | undefined },
+  ): Promise<PlayerResidence> {
+    const existing = this.residences.get(residenceId);
+    if (!existing) throw new Error(`Unknown residence: ${residenceId}`);
+    const updated: PlayerResidence = {
+      ...existing,
+      tenancyStatus: input.tenancyStatus,
+      nextRentDueAt: input.nextRentDueAt,
+      graceDeadlineAt: input.graceDeadlineAt,
+    };
+    this.residences.set(residenceId, updated);
+    return updated;
   }
 
   residenceTypeCount(): number {

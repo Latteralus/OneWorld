@@ -7,6 +7,7 @@ import {
   formatUtcIsoWeekKey,
   isPast,
   minutesBetween,
+  nextLocalHourInstantUtc,
 } from "../time.js";
 
 describe("time", () => {
@@ -46,5 +47,48 @@ describe("time", () => {
     const reference = new Date("2026-07-28T12:00:00Z");
     expect(isPast(new Date("2026-07-28T11:00:00Z"), reference)).toBe(true);
     expect(isPast(new Date("2026-07-28T13:00:00Z"), reference)).toBe(false);
+  });
+
+  describe("nextLocalHourInstantUtc", () => {
+    const tz = "America/New_York";
+
+    it("resolves 9am Eastern to 14:00 UTC in standard time (EST, UTC-5)", () => {
+      const from = new Date("2026-01-15T12:00:00Z"); // 07:00 EST
+      expect(nextLocalHourInstantUtc(from, 9, tz).toISOString()).toBe("2026-01-15T14:00:00.000Z");
+    });
+
+    it("resolves 9am Eastern to 13:00 UTC in daylight time (EDT, UTC-4)", () => {
+      const from = new Date("2026-07-15T12:00:00Z"); // 08:00 EDT
+      expect(nextLocalHourInstantUtc(from, 9, tz).toISOString()).toBe("2026-07-15T13:00:00.000Z");
+    });
+
+    it("rolls over to the next day once the local hour has already passed", () => {
+      const from = new Date("2026-01-15T15:00:00Z"); // 10:00 EST, past 9am
+      expect(nextLocalHourInstantUtc(from, 9, tz).toISOString()).toBe("2026-01-16T14:00:00.000Z");
+    });
+
+    it("shifts the UTC instant by one hour across the spring-forward transition (2026-03-08)", () => {
+      const beforeTransition = new Date("2026-03-07T12:00:00Z"); // 07:00 EST
+      expect(nextLocalHourInstantUtc(beforeTransition, 9, tz).toISOString()).toBe(
+        "2026-03-07T14:00:00.000Z",
+      );
+
+      const afterTransition = new Date("2026-03-08T12:00:00Z"); // 08:00 EDT
+      expect(nextLocalHourInstantUtc(afterTransition, 9, tz).toISOString()).toBe(
+        "2026-03-08T13:00:00.000Z",
+      );
+    });
+
+    it("shifts the UTC instant by one hour across the fall-back transition (2026-11-01)", () => {
+      const beforeTransition = new Date("2026-10-31T12:00:00Z"); // 08:00 EDT
+      expect(nextLocalHourInstantUtc(beforeTransition, 9, tz).toISOString()).toBe(
+        "2026-10-31T13:00:00.000Z",
+      );
+
+      const afterTransition = new Date("2026-11-01T12:00:00Z"); // 07:00 EST
+      expect(nextLocalHourInstantUtc(afterTransition, 9, tz).toISOString()).toBe(
+        "2026-11-01T14:00:00.000Z",
+      );
+    });
   });
 });

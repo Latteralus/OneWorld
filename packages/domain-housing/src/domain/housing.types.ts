@@ -1,4 +1,4 @@
-import type { CityId, PlayerId, ResidenceId } from "@oneworld/contracts";
+import type { CityId, HousingTenancyState, PlayerId, ResidenceId } from "@oneworld/contracts";
 import type { SocialStatusLabel } from "@oneworld/config";
 import type { Cents } from "@oneworld/utils";
 
@@ -8,7 +8,10 @@ export interface PlayerResidence {
   residenceTypeKey: string;
   cityId: CityId;
   tenancyStatus: string; // see housingTenancyStates in @oneworld/contracts
+  weeklyRentCents: Cents;
   nextRentDueAt: Date;
+  /** Set while `tenancyStatus` is `PAYMENT_DUE`/`OVERDUE_GRACE_PERIOD`; undefined once resolved. */
+  graceDeadlineAt?: Date;
 }
 
 /** A row in the `residence_types` catalog table. */
@@ -55,11 +58,32 @@ export interface HousingRepository {
     residenceTypeId: string;
     /** Carried through onto the returned `PlayerResidence` (the DB row only stores the FK id). */
     residenceTypeKey: string;
+    weeklyRentCents: Cents;
     cityId: CityId;
     tenancyStatus: string;
     nextRentDueAt: Date;
   }): Promise<PlayerResidence>;
   findActiveResidenceForPlayer(playerId: PlayerId): Promise<PlayerResidence | undefined>;
+  /** Residences with an unresolved rent-sweep pass due: `tenancyStatus != UNHOUSED` and `nextRentDueAt <= now`. */
+  listResidencesDueForRentSweep(now: Date): Promise<PlayerResidence[]>;
+  updateTenancyOutcome(
+    residenceId: ResidenceId,
+    input: { tenancyStatus: string; nextRentDueAt: Date; graceDeadlineAt: Date | undefined },
+  ): Promise<PlayerResidence>;
+}
+
+export interface TenancyTransitionInput {
+  currentState: HousingTenancyState;
+  paymentSucceeded: boolean;
+  now: Date;
+  graceDeadlineAt?: Date;
+}
+
+export interface TenancyTransitionResult {
+  nextState: HousingTenancyState;
+  nextGraceDeadlineAt: Date | undefined;
+  /** Present only when the due date should move forward; otherwise the caller keeps the residence's existing due date. */
+  nextRentDueAt: Date | undefined;
 }
 
 export interface StatusScoreInput {

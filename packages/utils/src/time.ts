@@ -49,3 +49,67 @@ export function isPast(date: Date, referenceNow: Date = nowUtc()): boolean {
 export function minutesBetween(a: Date, b: Date): number {
   return (b.getTime() - a.getTime()) / 60_000;
 }
+
+/** Minutes to add to a UTC instant to get `timeZone`'s local wall-clock time at that instant. */
+function getTimeZoneOffsetMinutes(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(instant);
+  const value = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const localWallClockAsUtcMs = Date.UTC(
+    value("year"),
+    value("month") - 1,
+    value("day"),
+    value("hour"),
+    value("minute"),
+    value("second"),
+  );
+  return (localWallClockAsUtcMs - instant.getTime()) / 60_000;
+}
+
+/**
+ * Next instant (strictly after `fromUtc`) at which `timeZone`'s local wall
+ * clock reads `localHour:00:00` - DST-aware, so the result shifts by one
+ * UTC hour across a DST transition instead of drifting (spec section 8.7:
+ * daily payroll fires at a fixed Eastern-Time hour).
+ */
+export function nextLocalHourInstantUtc(fromUtc: Date, localHour: number, timeZone: string): Date {
+  const dayParts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(fromUtc);
+  const value = (type: string) => Number(dayParts.find((p) => p.type === type)?.value ?? "0");
+
+  const resolve = (year: number, monthIndex: number, day: number): Date => {
+    const candidateAsUtc = Date.UTC(year, monthIndex, day, localHour, 0, 0, 0);
+    const offset = getTimeZoneOffsetMinutes(fromUtc, timeZone);
+    let instantMs = candidateAsUtc - offset * 60_000;
+    // The candidate instant can land on the other side of a DST transition
+    // from `fromUtc`, where the offset differs - re-resolve against it.
+    const offsetAtCandidate = getTimeZoneOffsetMinutes(new Date(instantMs), timeZone);
+    if (offsetAtCandidate !== offset) {
+      instantMs = candidateAsUtc - offsetAtCandidate * 60_000;
+    }
+    return new Date(instantMs);
+  };
+
+  const year = value("year");
+  const monthIndex = value("month") - 1;
+  const day = value("day");
+
+  let candidate = resolve(year, monthIndex, day);
+  if (candidate.getTime() <= fromUtc.getTime()) {
+    const nextDay = new Date(Date.UTC(year, monthIndex, day + 1));
+    candidate = resolve(nextDay.getUTCFullYear(), nextDay.getUTCMonth(), nextDay.getUTCDate());
+  }
+  return candidate;
+}

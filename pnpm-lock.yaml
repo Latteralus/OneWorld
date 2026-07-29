@@ -236,6 +236,9 @@ importers:
       '@oneworld/domain-housing':
         specifier: workspace:*
         version: link:../../packages/domain-housing
+      '@oneworld/domain-notifications':
+        specifier: workspace:*
+        version: link:../../packages/domain-notifications
       '@oneworld/domain-passengers':
         specifier: workspace:*
         version: link:../../packages/domain-passengers
@@ -251,6 +254,9 @@ importers:
       '@oneworld/domain-vehicles':
         specifier: workspace:*
         version: link:../../packages/domain-vehicles
+      '@oneworld/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
     devDependencies:
       '@oneworld/testing':
         specifier: workspace:*
@@ -355,6 +361,9 @@ importers:
       '@oneworld/config':
         specifier: workspace:*
         version: link:../config
+      '@oneworld/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@supabase/supabase-js':
         specifier: ^2.47.10
         version: 2.111.0
@@ -476,10 +485,16 @@ importers:
       '@oneworld/utils':
         specifier: workspace:*
         version: link:../utils
+      drizzle-orm:
+        specifier: ^0.38.3
+        version: 0.38.4(@types/react@19.2.17)(postgres@3.4.9)(react@19.2.8)
     devDependencies:
       '@oneworld/testing':
         specifier: workspace:*
         version: link:../testing
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

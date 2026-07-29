@@ -14,10 +14,22 @@ other domains but does not own them.
 ```ts
 import {
   calculateStatusScore,
+  calculateNextRentDueAt,
+  calculateGraceDeadline,
+  nextTenancyState,
   HousingService,
   DrizzleHousingRepository,
 } from "@oneworld/domain-housing";
 ```
+
+`HousingService.listDueForRentSweep(now)` / `applyRentOutcome(...)` split
+rent charging the same way `@oneworld/domain-employment`'s
+`EmploymentService.runPayrollSweep` splits payroll: this domain never
+moves money. The caller (a worker-job orchestrator composing this
+service with `@oneworld/domain-finance`'s `LedgerService` inside one
+transaction) checks the account balance, attempts the charge, then calls
+`applyRentOutcome` to record whether it succeeded and let
+`nextTenancyState` advance the tenancy state machine.
 
 ## State machine
 
@@ -39,12 +51,15 @@ section 9.1). The state union lives in `@oneworld/contracts`
 
 ## Roadmap status
 
-Phase 0 delivers the pure status-score math above. Phase 1 adds
-`HousingService.grantStartingResidence`, the starting-residence grant used
-by onboarding to give every new player their Run-Down Apartment exactly
-once. The full tenancy lifecycle - rent worker, overdue/grace-period
-handling, and eviction - still lands in Phase 2 per the implementation
-roadmap.
+Phase 0 delivered the pure status-score math. Phase 1 added
+`HousingService.grantStartingResidence`. Phase 2 adds the full tenancy
+lifecycle: `listDueForRentSweep`/`applyRentOutcome` and the
+`nextTenancyState` transition rules, driven by
+`apps/worker/src/jobs/housing.job.ts`'s `weeklyRentJob`. The exact
+grace/eviction timing (72h at each of two escalation steps before
+`TEMPORARY_LODGING`, then `UNHOUSED` on the next missed payment) is a
+placeholder decision - see the Phase 2 entry in
+`ProjectDocumentation/OneWorld_Change_Log.md`.
 
 ## Testing
 

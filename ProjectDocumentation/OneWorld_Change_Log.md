@@ -47,8 +47,8 @@ Tracks resolution of the fifteen open items from spec section 35. "Resolved (pla
 | 7 | Passenger generation interval/targets | Resolved (placeholder) | 15-minute interval, base rate 0.1 of the remaining gap per interval (`passenger.config.ts`). Untested. |
 | 8 | PPL route-distance/passenger limits | **Open** | Only the onboarding-tutorial limit exists (`onboardingConfig.protections.firstFlightMaxRangeNm = 50`), not a general PPL route/passenger-count cap. |
 | 9 | Application delay/acceptance rates | Resolved (placeholder) | 2-6 hour decision delay; acceptance rate by availability tier (0.55-0.97), per `employment.config.ts`. |
-| 10 | Exact daily payroll time | Resolved (placeholder, **known bug**) | 09:00 fixed **UTC** hour. This does *not* correctly implement "Eastern Time, DST-aware" from section 8.7 - see the gap noted in `domain-employment`'s README and item below. Must be fixed before Phase 2 ships. |
-| 11 | Rent grace period / housing-failure consequences | Partially resolved | 72-hour grace period set (`housing.config.ts`); the failure-consequence *state machine* is defined (`housingTenancyStates` in contracts) but no service implements the transitions yet. |
+| 10 | Exact daily payroll time | Resolved | 09:00 `America/New_York`, DST-aware via `@oneworld/utils#nextLocalHourInstantUtc` (fixed 2026-07-29 - see Phase 2 entry below; previously a known bug, fixed UTC hour). |
+| 11 | Rent grace period / housing-failure consequences | Resolved (placeholder) | 72-hour grace period (`housing.config.ts`) applied at two escalation steps - `ACTIVE` → `PAYMENT_DUE` → `OVERDUE_GRACE_PERIOD` → `EVICTION_PENDING` → `TEMPORARY_LODGING` (billed at `temporaryLodgingWeeklyCostCents`) → `UNHOUSED` on the next missed payment - implemented in `domain-housing`'s `nextTenancyState`. A successful charge from any state jumps straight back to `ACTIVE`. Untested against real play patterns; the two-escalation-step timing is a placeholder, not a final balance decision. |
 | 12 | Ground fuel: automatic vs. manual | Resolved | Automatic purchase on travel start, per `vehicle.config.ts` (`autoPurchaseFuelOnTravel: true`), matching the spec's preview-simplicity suggestion. |
 | 13 | Tracker support: MSFS 2020 vs. 2024 | **Open** | The mock adapter is version-agnostic; no real SimConnect binding exists yet to make this decision concrete. |
 | 14 | Telemetry storage-retention policy | Resolved (placeholder) | 30-day raw retention (`trackerConfig.telemetry.rawRetentionDays`). No aggregation/expiry job implemented yet - the config value has nothing enforcing it. |
@@ -56,12 +56,109 @@ Tracks resolution of the fifteen open items from spec section 35. "Resolved (pla
 
 ## Known architectural gaps (carried forward until fixed)
 
-- **Payroll timezone**: `calculateNextPayrollAt` in `@oneworld/domain-employment` uses a fixed UTC hour instead of a DST-aware conversion against `America/New_York`. Flagged in code and in that package's README. Must be fixed before Phase 2 (Employment and Recurring Economy) ships.
 - **Worker locking**: `apps/worker`'s `Scheduler` has no distributed lock/claim mechanism (spec section 25.2). Fine for a single worker instance; required before running more than one.
+- **Outbox has writers, no reader**: every Phase 2 worker orchestrator writes to `domain_events` via `@oneworld/db#insertDomainEvent`, but no consumer/dispatcher processes the table yet. Notifications are created by direct calls from the orchestrators instead, not via an outbox-driven consumer - see the Phase 2 entry below.
 
 ---
 
 ## Change History
+
+### 2026-07-29 - Phase 2: Employment and Recurring Economy
+
+**Spec sections touched:** 7 (Accounts/Ledger), 8 (Civilian Employment),
+9 (Housing/Social Status), 10.5 (Vehicle Maintenance), 24.3-24.4 (Domain
+Events/Outbox), 26.10 (Notifications), 32 (Phase 2 of the roadmap), 35
+open items #10, #11.
+
+**What changed:**
+
+- **DST payroll fix (blocker)**: added `@oneworld/utils#nextLocalHourInstantUtc`
+  (DST-aware local-hour → UTC-instant conversion via `Intl.DateTimeFormat`,
+  re-resolving the offset if the candidate instant lands on the other side
+  of a transition from the reference time) and rewired
+  `domain-employment`'s `calculateNextPayrollAt` to use it against
+  `gameClockConfig.defaultDisplayTimezone`. Tested across both 2026 U.S.
+  DST transitions (2026-03-08 spring-forward, 2026-11-01 fall-back) -
+  resolves section 35 open item #10, previously a known bug (fixed UTC
+  hour).
+- **`@oneworld/domain-employment`**: gained `EmploymentService` +
+  `Drizzle`/`InMemoryEmploymentRepository`, following
+  `domain-housing`/`domain-vehicles`' existing application/infrastructure
+  shape. Covers job postings, applications (one pending at a time -
+  `APPLICATION_ALREADY_PENDING`), the delayed-decision sweep
+  (`resolveDueDecisions`), accept/decline (accepting always replaces any
+  existing active job per the one-job rule, section 8.2, rather than
+  blocking), and `runPayrollSweep` (determines who's owed pay, advances
+  the schedule from the *previous* `nextPayAt` to avoid drift - the actual
+  ledger post happens in the worker orchestrator, keeping "Finance domain
+  writes the ledger entry, Employment domain determines whether pay is
+  owed" from section 8.7 literal). Added a seed script
+  (`pnpm world:seed-jobs`) that creates one long-lived posting per
+  configured job template per starting city.
+- **`@oneworld/domain-housing`**: added the full tenancy lifecycle -
+  `calculateNextRentDueAt`/`calculateGraceDeadline`/`nextTenancyState`
+  (pure rules) plus `HousingService.listDueForRentSweep`/`applyRentOutcome`.
+  Resolves section 35 open item #11: `ACTIVE` → `PAYMENT_DUE` →
+  `OVERDUE_GRACE_PERIOD` → `EVICTION_PENDING` → `TEMPORARY_LODGING` (billed
+  separately) → `UNHOUSED`, with a successful charge from any state
+  jumping straight back to `ACTIVE` - housing failure stays recoverable
+  and never blocks flying, per section 9.1. `PlayerResidence` gained
+  `weeklyRentCents`/`graceDeadlineAt` fields (joined from `residence_types`
+  where needed).
+- **`@oneworld/domain-vehicles`**: added
+  `VehicleService.listDueForMaintenance`/`recordMaintenanceOutcome`.
+  Simpler than housing's state machine by design - no vehicle state
+  machine exists and `vehicleConfig.breakdownsEnabled` is `false`, so
+  insufficient funds just skips the charge and retries next sweep, no
+  debt or penalty. `PlayerVehicle` gained `weeklyMaintenanceCents`/
+  `nextMaintenanceDueAt`; onboarding now seeds the first maintenance
+  charge 7 days out, mirroring rent's first-week protection (section 6.6).
+- **`@oneworld/db`**: added `insertDomainEvent` (thin outbox writer,
+  idempotent via the existing unique index on `idempotency_key`) - now
+  depends on `@oneworld/contracts` for the `DomainEvent` type.
+- **`@oneworld/domain-notifications`**: gained its first real code -
+  `NotificationService` (insert-only) and
+  `Drizzle`/`InMemoryNotificationRepository`. No outbox consumer exists
+  yet, so worker orchestrators call this directly rather than reacting to
+  published events - a deliberate scope cut, not the long-term shape (see
+  known gaps below).
+- **`apps/worker`**: all four Phase 2 job bodies
+  (`employment-application-decision`, `daily-payroll`, `weekly-rent`,
+  `weekly-vehicle-maintenance`) now run real transactions instead of
+  no-ops, each composing the relevant domain service(s) with
+  `LedgerService`/`NotificationService`/`insertDomainEvent` against one
+  shared `tx`, following `runOnboardingTransaction`'s pattern (`apps/worker/src/jobs/{employment,housing,vehicle}.job.ts`).
+- Two new domain error codes: `JOB_POSTING_UNAVAILABLE`,
+  `APPLICATION_NOT_ACCEPTED`.
+
+**Decisions made:** resolved section 35 open items #10 (DST payroll,
+fully resolved) and #11 (rent grace/eviction timing, resolved as a
+placeholder - see the Decisions Log above for the exact escalation
+timing chosen and why it's not final).
+
+**Deviations from the spec:** none intentional. Notifications bypass the
+outbox/consumer architecture described in `domain-notifications`' README
+and called for in section 24.3-24.4 - orchestrators call
+`NotificationService` directly. This is a scope cut for Phase 2, not a
+reinterpretation of the design; building a real outbox consumer is
+tracked as a known gap below.
+
+**Gaps surfaced:**
+
+- No live Supabase/Postgres instance was available in this environment
+  (same constraint as Phase 0/1). Every new service has unit-test
+  coverage against in-memory repositories and every Drizzle repository
+  was reviewed against the existing schema (no migration needed - Phase 0
+  already modeled every Phase 2 table), but nobody has run a worker
+  process against a real database to watch a payroll/rent/maintenance
+  sweep actually fire. Do that before treating Phase 2 as field-verified.
+- The outbox has real writers now but still no reader - see "Known
+  architectural gaps" above.
+- No UI was added for job postings/applications/offers, rent/maintenance
+  status, or notifications - Phase 2 delivered the backend services and
+  worker jobs only, per the roadmap's phase boundary (`apps/web` UI for
+  these is implicitly a later-phase or polish-pass concern, not called
+  out as a Phase 2 deliverable in spec section 32).
 
 ### 2026-07-29 - Vercel deployment fixes for `apps/web`
 

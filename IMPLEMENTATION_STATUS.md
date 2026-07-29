@@ -25,7 +25,7 @@ Legend: ✅ done · 🟡 partial/scaffolded · ⬜ not started
 | Database and migrations                | ✅     | Full Drizzle schema for all section-23 tables; first migration generated (`packages/db/migrations/0000_happy_karen_page.sql`) - generation needed a `drizzle-kit` bump to 0.31.10 to fix a NodeNext `.js`-extension resolution bug, no schema changes |
 | Auth                                   | 🟡     | Email/password sign up, sign in, sign out via `@supabase/ssr` (`apps/web/app/{login,signup,logout}`, `middleware.ts`); no password reset, OAuth, or email-verification UI yet                                                                         |
 | Contracts package                      | ✅     | `@oneworld/contracts` - branded IDs, state machines, domain events, error codes                                                                                                                                                                       |
-| Domain event/outbox foundation         | 🟡     | `domain_events` table + `DomainEvent` envelope type exist; outbox writer/dispatcher not implemented                                                                                                                                                   |
+| Domain event/outbox foundation         | 🟡     | `domain_events` table + `DomainEvent` envelope type exist; `@oneworld/db#insertDomainEvent` writer exists and is called by every Phase 2 worker orchestrator - no consumer/dispatcher reads the table yet                                                                                                                                                   |
 | Finance ledger foundation              | ✅     | `@oneworld/domain-finance` - `LedgerService`, idempotent posting, in-memory + Drizzle repositories, tested                                                                                                                                            |
 | Worker framework                       | ✅     | `@oneworld/worker` - `Scheduler`, structured logging, all 11 section-25.1 jobs registered as documented no-op placeholders                                                                                                                            |
 | Audit logging                          | 🟡     | `audit_log` table + `@oneworld/domain-audit` types exist; no write path yet                                                                                                                                                                           |
@@ -60,11 +60,23 @@ Legend: ✅ done · 🟡 partial/scaffolded · ⬜ not started
 
 ## Phase 2 - Employment and Recurring Economy
 
-🟡 Pure math complete and tested: `@oneworld/domain-employment` (acceptance,
-payroll timing), `@oneworld/domain-finance` (ledger). Postings,
-applications, and the worker job bodies (`daily-payroll`, `weekly-rent`,
-`weekly-vehicle-maintenance`, `employment-application-decision`) are
-registered in `apps/worker` but still no-ops.
+✅ `@oneworld/domain-employment`'s `EmploymentService`/`DrizzleEmploymentRepository`
+(postings, applications, delayed-decision resolution, one-job-rule
+replace-on-accept, payroll scheduling) plus a job-posting seed script
+(`pnpm world:seed-jobs`). `@oneworld/domain-housing`'s full tenancy
+lifecycle (`listDueForRentSweep`/`applyRentOutcome`, `nextTenancyState`).
+`@oneworld/domain-vehicles`' weekly maintenance charging
+(`listDueForMaintenance`/`recordMaintenanceOutcome`). All four
+`apps/worker` job bodies (`daily-payroll`, `weekly-rent`,
+`weekly-vehicle-maintenance`, `employment-application-decision`) now run
+real transactions composing the relevant domain service(s) with
+`@oneworld/domain-finance`'s `LedgerService` inside one `db.transaction`,
+following the `runOnboardingTransaction` pattern. `@oneworld/domain-notifications`
+gained an insert-only `NotificationService` and `@oneworld/db` gained an
+`insertDomainEvent` outbox writer; both are called directly by the worker
+orchestrators (no consumer/dispatcher reads the outbox yet - unchanged
+🟡 gap, see cross-cutting notes). Not exercised against a live database -
+see the note at the bottom of this file.
 
 ## Phase 3 - Ground Travel
 
@@ -120,10 +132,6 @@ or load tests yet.
   passenger job, flight session, training enrollment, employment
   application, housing tenancy, player location) is codified in
   `@oneworld/contracts`.
-- **Known architectural gap**: `@oneworld/domain-employment`'s
-  `calculateNextPayrollAt` uses a fixed UTC hour rather than a DST-aware
-  `America/New_York` conversion - flagged in that package's README and in
-  its source comment. Must be fixed before Phase 2 ships.
 - **Known architectural gap**: the worker's `Scheduler` has no distributed
   locking/claim mechanism (spec section 25.2) - fine for a single worker
   instance, required before scaling to more than one.
@@ -131,14 +139,16 @@ or load tests yet.
   takes `@oneworld/db`'s `DbOrTx` (not `Database`) so several domains'
   repositories can be composed against the same `tx` inside one
   `db.transaction(...)` call - the pattern `OnboardingService`/
-  `runOnboardingTransaction` uses to grant all starting assets atomically.
+  `runOnboardingTransaction` established in Phase 1 and now also used by
+  every Phase 2 worker-job orchestrator (`apps/worker/src/jobs/{employment,housing,vehicle}.job.ts`).
   Follow this when any future orchestration needs the same guarantee
   (e.g. Phase 6 flight settlement).
-- **Not exercised end-to-end**: no live Supabase/Postgres instance was
-  available in the environment this Phase 1 work was built in. Every
-  service has unit-test coverage against in-memory repositories, the web
-  app builds and its route tree was verified, and the airport import was
-  run against live real-world data - but nobody has yet run
-  `pnpm db:migrate` against a real database, signed up a real user, or
-  clicked through onboarding in a browser. Do that before calling Phase 1
-  done in the field.
+- **Not exercised end-to-end**: no live Supabase/Postgres instance is
+  available in this environment. Every service (Phase 0-2) has
+  unit-test coverage against in-memory repositories, the web app builds
+  and its route tree was verified, and the airport import was run
+  against live real-world data - but nobody has yet run `pnpm db:migrate`
+  against a real database, signed up a real user, clicked through
+  onboarding in a browser, or run `apps/worker` against a live database
+  to watch a payroll/rent/maintenance sweep actually fire. Do that before
+  calling Phase 1 or Phase 2 done in the field.

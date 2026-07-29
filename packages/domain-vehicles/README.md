@@ -33,12 +33,15 @@ import {
 
 ## Roadmap status
 
-Phase 0 delivers the pure vehicle math above. Phase 1 adds
+Phase 0 delivered the pure vehicle math. Phase 1 added
 `VehicleService.grantStartingVehicle`, the starting-vehicle grant used by
 onboarding to give every new player their 1996 Hunda Attord exactly once,
-fully fueled and owned outright. Purchase/resale flows and the
-weekly-maintenance worker integration land alongside Phase 2/3 per the
-implementation roadmap.
+fully fueled and owned outright. Phase 2 adds
+`listDueForMaintenance`/`recordMaintenanceOutcome`, driven by
+`apps/worker/src/jobs/vehicle.job.ts`'s `weeklyVehicleMaintenanceJob` -
+insufficient funds simply skips the charge and retries next sweep (no
+debt, no penalty, consistent with `vehicleConfig.breakdownsEnabled: false`).
+Purchase/resale flows still land later per the implementation roadmap.
 
 ## Testing
 

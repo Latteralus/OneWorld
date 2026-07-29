@@ -31,6 +31,7 @@ describe("VehicleService.grantStartingVehicle", () => {
       statusScore: 0,
       mileageMin: 170_000,
       mileageMax: 235_000,
+      nextMaintenanceDueAt: new Date("2026-08-04T00:00:00Z"),
     });
 
     expect(vehicle.ownerId).toBe(playerId);
@@ -91,9 +92,75 @@ describe("VehicleService.getVehicleForPlayer", () => {
       statusScore: 0,
       mileageMin: 170_000,
       mileageMax: 235_000,
+      nextMaintenanceDueAt: new Date("2026-08-04T00:00:00Z"),
     });
 
     const vehicle = await service.getVehicleForPlayer(playerId);
     expect(vehicle?.vehicleTypeKey).toBe("starting_hunda_attord");
+  });
+});
+
+describe("VehicleService maintenance sweep (listDueForMaintenance / recordMaintenanceOutcome)", () => {
+  async function grantVehicle(service: VehicleService, nextMaintenanceDueAt: Date) {
+    return service.grantStartingVehicle({
+      playerId: "player-1" as PlayerId,
+      currentCityId: "city-1" as CityId,
+      typeKey: "starting_hunda_attord",
+      name: "1996 Hunda Attord",
+      valueCents: cents(50_000),
+      speedMph: 55,
+      fuelEfficiencyMpg: 24,
+      tankCapacityGallons: 16,
+      expectedLifespanMiles: 250_000,
+      weeklyMaintenanceCents: cents(2_500),
+      quality: "very_poor",
+      reliability: "low",
+      statusScore: 0,
+      mileageMin: 170_000,
+      mileageMax: 235_000,
+      nextMaintenanceDueAt,
+    });
+  }
+
+  it("does not surface a vehicle before its due date", async () => {
+    const { service } = makeService();
+    await grantVehicle(service, new Date("2026-08-04T00:00:00Z"));
+    const due = await service.listDueForMaintenance(new Date("2026-08-03T00:00:00Z"));
+    expect(due).toHaveLength(0);
+  });
+
+  it("advances the due date 7 days on a successful charge", async () => {
+    const { service } = makeService();
+    const dueAt = new Date("2026-08-04T00:00:00Z");
+    const vehicle = await grantVehicle(service, dueAt);
+
+    const [due] = await service.listDueForMaintenance(dueAt);
+    expect(due?.vehicle.id).toBe(vehicle.id);
+    expect(due?.weekKey).toBe("2026-32");
+
+    await service.recordMaintenanceOutcome({
+      vehicleId: vehicle.id,
+      previousDueAt: dueAt,
+      paymentSucceeded: true,
+    });
+
+    const updated = await service.getVehicleForPlayer("player-1" as PlayerId);
+    expect(updated?.nextMaintenanceDueAt.toISOString()).toBe("2026-08-11T00:00:00.000Z");
+  });
+
+  it("leaves the due date untouched on insufficient funds, so the next sweep retries with no debt or penalty", async () => {
+    const { service } = makeService();
+    const dueAt = new Date("2026-08-04T00:00:00Z");
+    const vehicle = await grantVehicle(service, dueAt);
+
+    await service.recordMaintenanceOutcome({
+      vehicleId: vehicle.id,
+      previousDueAt: dueAt,
+      paymentSucceeded: false,
+    });
+
+    const stillDue = await service.listDueForMaintenance(dueAt);
+    expect(stillDue).toHaveLength(1);
+    expect(stillDue[0]?.vehicle.nextMaintenanceDueAt).toEqual(dueAt);
   });
 });

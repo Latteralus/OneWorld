@@ -13,6 +13,7 @@ facts, only communicates them.
 
 ```ts
 import type { Notification, NotifiableEventType } from "@oneworld/domain-notifications";
+import { NotificationService, DrizzleNotificationRepository } from "@oneworld/domain-notifications";
 ```
 
 ## Key invariants
@@ -27,9 +28,14 @@ import type { Notification, NotifiableEventType } from "@oneworld/domain-notific
 
 ## Roadmap status
 
-Phase 0 delivers the type contracts above. The outbox consumer that turns
-domain events into notifications lands alongside each feature's roadmap
-phase (e.g. flight notifications in Phase 6, training in Phase 7).
+Phase 0 delivered the type contracts. Phase 2 adds
+`NotificationService`/`DrizzleNotificationRepository` (insert-only) and
+its first callers: the employment-decision and rent-distress worker-job
+orchestrators create notifications directly rather than through an
+outbox consumer, since no consumer exists yet - a deliberate scope cut
+for Phase 2 (see the Phase 2 change log entry). The outbox consumer this
+package's ownership section describes still doesn't exist; direct calls
+are how notifications ship until it does.
 
 ## Testing
 

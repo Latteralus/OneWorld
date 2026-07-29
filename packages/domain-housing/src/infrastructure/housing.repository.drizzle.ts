@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lte, ne } from "drizzle-orm";
 import type { DbOrTx } from "@oneworld/db";
 import { schema } from "@oneworld/db";
 import type { Cents } from "@oneworld/utils";
@@ -8,14 +8,17 @@ import type { HousingRepository, PlayerResidence } from "../domain/housing.types
 function toDomainResidence(
   row: typeof schema.playerResidences.$inferSelect,
   residenceTypeKey: string,
+  weeklyRentCents: Cents,
 ): PlayerResidence {
   return {
     id: row.id as ResidenceId,
     playerId: row.playerId as PlayerId,
     residenceTypeKey,
+    weeklyRentCents,
     cityId: row.cityId as CityId,
     tenancyStatus: row.tenancyStatus,
     nextRentDueAt: row.nextRentDueAt,
+    graceDeadlineAt: row.graceDeadlineAt ?? undefined,
   };
 }
 
@@ -61,6 +64,7 @@ export class DrizzleHousingRepository implements HousingRepository {
     playerId: PlayerId;
     residenceTypeId: string;
     residenceTypeKey: string;
+    weeklyRentCents: Cents;
     cityId: CityId;
     tenancyStatus: string;
     nextRentDueAt: Date;
@@ -76,7 +80,7 @@ export class DrizzleHousingRepository implements HousingRepository {
       })
       .returning();
     if (!inserted) throw new Error("Failed to insert player residence");
-    return toDomainResidence(inserted, input.residenceTypeKey);
+    return toDomainResidence(inserted, input.residenceTypeKey, input.weeklyRentCents);
   }
 
   async findActiveResidenceForPlayer(playerId: PlayerId): Promise<PlayerResidence | undefined> {
@@ -84,6 +88,7 @@ export class DrizzleHousingRepository implements HousingRepository {
       .select({
         residence: schema.playerResidences,
         residenceTypeKey: schema.residenceTypes.key,
+        weeklyRentCents: schema.residenceTypes.weeklyRentCents,
       })
       .from(schema.playerResidences)
       .innerJoin(
@@ -96,6 +101,53 @@ export class DrizzleHousingRepository implements HousingRepository {
           eq(schema.playerResidences.tenancyStatus, "ACTIVE"),
         ),
       );
-    return row ? toDomainResidence(row.residence, row.residenceTypeKey) : undefined;
+    return row
+      ? toDomainResidence(row.residence, row.residenceTypeKey, row.weeklyRentCents as Cents)
+      : undefined;
+  }
+
+  async listResidencesDueForRentSweep(now: Date): Promise<PlayerResidence[]> {
+    const rows = await this.db
+      .select({
+        residence: schema.playerResidences,
+        residenceTypeKey: schema.residenceTypes.key,
+        weeklyRentCents: schema.residenceTypes.weeklyRentCents,
+      })
+      .from(schema.playerResidences)
+      .innerJoin(
+        schema.residenceTypes,
+        eq(schema.playerResidences.residenceTypeId, schema.residenceTypes.id),
+      )
+      .where(
+        and(
+          ne(schema.playerResidences.tenancyStatus, "UNHOUSED"),
+          lte(schema.playerResidences.nextRentDueAt, now),
+        ),
+      );
+    return rows.map((row) => toDomainResidence(row.residence, row.residenceTypeKey, row.weeklyRentCents as Cents));
+  }
+
+  async updateTenancyOutcome(
+    residenceId: ResidenceId,
+    input: { tenancyStatus: string; nextRentDueAt: Date; graceDeadlineAt: Date | undefined },
+  ): Promise<PlayerResidence> {
+    const [updated] = await this.db
+      .update(schema.playerResidences)
+      .set({
+        tenancyStatus: input.tenancyStatus,
+        nextRentDueAt: input.nextRentDueAt,
+        graceDeadlineAt: input.graceDeadlineAt ?? null,
+      })
+      .where(eq(schema.playerResidences.id, residenceId))
+      .returning();
+    if (!updated) throw new Error(`Unknown residence: ${residenceId}`);
+
+    const [residenceType] = await this.db
+      .select({ key: schema.residenceTypes.key, weeklyRentCents: schema.residenceTypes.weeklyRentCents })
+      .from(schema.residenceTypes)
+      .where(eq(schema.residenceTypes.id, updated.residenceTypeId));
+    if (!residenceType) throw new Error(`Unknown residence type: ${updated.residenceTypeId}`);
+
+    return toDomainResidence(updated, residenceType.key, residenceType.weeklyRentCents as Cents);
   }
 }

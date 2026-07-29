@@ -21,6 +21,8 @@ export const domainErrorCodes = [
   "NOT_AUTHENTICATED",
   "NOT_AUTHORIZED",
   "USERNAME_TAKEN",
+  "JOB_POSTING_UNAVAILABLE",
+  "APPLICATION_NOT_ACCEPTED",
 ] as const;
 
 export type DomainErrorCode = (typeof domainErrorCodes)[number];
