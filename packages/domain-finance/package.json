@@ -1,0 +1,30 @@
+{
+  "name": "@oneworld/domain-finance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Financial accounts and the immutable ledger",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "@oneworld/config": "workspace:*",
+    "@oneworld/contracts": "workspace:*",
+    "@oneworld/db": "workspace:*",
+    "@oneworld/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@oneworld/testing": "workspace:*",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
