@@ -5,6 +5,10 @@ section 32 against actual code, tests, and known gaps. Update this file
 whenever a roadmap item's status changes - do not mark a phase complete
 until its exit criteria pass (spec section 36 item 18).
 
+This is a snapshot. For a dated history of what changed and why - including
+resolutions of the spec's section 35 open design decisions - see
+`ProjectDocumentation/OneWorld_Change_Log.md`.
+
 Legend: ✅ done · 🟡 partial/scaffolded · ⬜ not started
 
 ---
