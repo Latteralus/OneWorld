@@ -20,7 +20,7 @@ enums that multiple domains need to agree on.
 ## Key invariants
 
 - State machines here are the single source of truth for valid state
-  values. Domain packages implement the *transition logic*; they import
+  values. Domain packages implement the _transition logic_; they import
   the state unions from here rather than redeclaring them.
 - Adding a new domain event or error code is additive and reviewed like a
   public API change, since every consumer compiles against this package.

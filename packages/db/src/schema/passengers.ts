@@ -1,4 +1,12 @@
-import { doublePrecision, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  doublePrecision,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { centsColumn, createdAtColumn, idColumn } from "./_helpers.js";
 import { airports } from "./airports.js";
 import { profiles } from "./identity.js";

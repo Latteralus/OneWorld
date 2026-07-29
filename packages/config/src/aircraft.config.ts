@@ -31,7 +31,12 @@ export const previewAircraftTypeSeeds = [
     model: "Bonanza",
     requiredQualification: "HIGH_PERFORMANCE",
   },
-  { icaoType: "DA62", manufacturer: "Diamond", model: "DA62", requiredQualification: "MULTI_ENGINE" },
+  {
+    icaoType: "DA62",
+    manufacturer: "Diamond",
+    model: "DA62",
+    requiredQualification: "MULTI_ENGINE",
+  },
   {
     icaoType: "BE58",
     manufacturer: "Beechcraft",
@@ -50,7 +55,12 @@ export const aircraftConfig = {
   previewAircraftTypeSeeds,
   /** Preview uses one rental pricing model for clarity (16.7, 35.4). */
   rentalPricingModel: "hourly_wet" as const,
-  mappingStatuses: ["official", "community_verified", "automatically_inferred", "unsupported"] as const,
+  mappingStatuses: [
+    "official",
+    "community_verified",
+    "automatically_inferred",
+    "unsupported",
+  ] as const,
 } as const;
 
 export type AircraftConfig = typeof aircraftConfig;

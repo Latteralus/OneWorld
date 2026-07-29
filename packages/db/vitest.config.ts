@@ -1,3 +1,3 @@
-import { extendVitestConfig } from "@oneworld/testing/vitest-base";
+import { extendVitestConfig } from "../testing/vitest-base.js";
 
 export default extendVitestConfig({});

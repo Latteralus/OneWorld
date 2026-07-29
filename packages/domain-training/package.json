@@ -20,6 +20,7 @@
     "@oneworld/config": "workspace:*",
     "@oneworld/contracts": "workspace:*",
     "@oneworld/db": "workspace:*",
+    "@oneworld/domain-qualifications": "workspace:*",
     "@oneworld/utils": "workspace:*"
   },
   "devDependencies": {

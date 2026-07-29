@@ -17,15 +17,13 @@ export const groundTravelExceptionalStates = [
   "UNDER_REVIEW",
 ] as const;
 export type GroundTravelState =
-  | (typeof groundTravelStates)[number]
-  | (typeof groundTravelExceptionalStates)[number];
+  (typeof groundTravelStates)[number] | (typeof groundTravelExceptionalStates)[number];
 
 // --- Passenger reservation (section 13.6) -----------------------------------
 export const passengerStates = ["WAITING", "RESERVED", "IN_FLIGHT", "DELIVERED"] as const;
 export const passengerExceptionalStates = ["RETURNED_TO_POOL", "UNDER_REVIEW"] as const;
 export type PassengerState =
-  | (typeof passengerStates)[number]
-  | (typeof passengerExceptionalStates)[number];
+  (typeof passengerStates)[number] | (typeof passengerExceptionalStates)[number];
 
 // --- Passenger job (section 14.5) -------------------------------------------
 export const passengerJobStates = [
@@ -43,8 +41,7 @@ export const passengerJobExceptionalStates = [
   "UNDER_REVIEW",
 ] as const;
 export type PassengerJobState =
-  | (typeof passengerJobStates)[number]
-  | (typeof passengerJobExceptionalStates)[number];
+  (typeof passengerJobStates)[number] | (typeof passengerJobExceptionalStates)[number];
 
 // --- Flight session (section 18.2) ------------------------------------------
 export const flightSessionStates = [
@@ -59,8 +56,7 @@ export const flightSessionStates = [
 ] as const;
 export const flightSessionOutcomeStates = ["ACCEPTED", "INVALIDATED", "UNDER_REVIEW"] as const;
 export type FlightSessionState =
-  | (typeof flightSessionStates)[number]
-  | (typeof flightSessionOutcomeStates)[number];
+  (typeof flightSessionStates)[number] | (typeof flightSessionOutcomeStates)[number];
 
 // --- Training enrollment (section 17.4) -------------------------------------
 export const trainingEnrollmentStates = [
@@ -72,8 +68,7 @@ export const trainingEnrollmentStates = [
 ] as const;
 export const trainingEnrollmentExceptionalStates = ["CANCELLED", "FAILED_CHECK_FLIGHT"] as const;
 export type TrainingEnrollmentState =
-  | (typeof trainingEnrollmentStates)[number]
-  | (typeof trainingEnrollmentExceptionalStates)[number];
+  (typeof trainingEnrollmentStates)[number] | (typeof trainingEnrollmentExceptionalStates)[number];
 
 // --- Employment application (section 8.6) -----------------------------------
 export const jobApplicationStates = ["PENDING", "ACCEPTED", "REJECTED", "OFFER_DECLINED"] as const;

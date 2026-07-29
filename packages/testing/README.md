@@ -9,7 +9,7 @@ Shared Vitest configuration and deterministic fixtures (spec section 30.6).
 
   ```ts
   import { extendVitestConfig } from "@oneworld/testing/vitest-base";
-  export default extendVitestConfig({ /* package-specific overrides */ });
+  export default extendVitestConfig({/* package-specific overrides */});
   ```
 
 - `src/fixtures/*` exports deterministic test data (a small preview airport

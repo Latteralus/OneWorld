@@ -1,4 +1,4 @@
-import { numeric, pgTable, text, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { centsColumn, createdAtColumn, idColumn, updatedAtColumn } from "./_helpers.js";
 
 /**
@@ -51,7 +51,7 @@ export const ledgerEntries = pgTable(
     idempotencyKey: text("idempotency_key").notNull(),
     effectiveAt: createdAtColumn(),
     createdAt: createdAtColumn(),
-    balanceAfterCents: numeric("balance_after_cents", { mode: "number" }),
+    balanceAfterCents: centsColumn("balance_after_cents"),
   },
   (table) => [uniqueIndex("ledger_entries_idempotency_key_idx").on(table.idempotencyKey)],
 );

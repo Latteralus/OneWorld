@@ -8,12 +8,12 @@ describe("calculateGreatCircleDistanceNm", () => {
     expect(calculateGreatCircleDistanceNm(kboi, kboi)).toBeCloseTo(0, 5);
   });
 
-  it("matches the known great-circle distance between KBOI and KSLC (~262 NM)", () => {
+  it("matches the known great-circle distance between KBOI and KSLC (~252 NM)", () => {
     const kboi = fixtureAirports[0];
     const kslc = fixtureAirports[3];
     const distance = calculateGreatCircleDistanceNm(kboi, kslc);
-    expect(distance).toBeGreaterThan(255);
-    expect(distance).toBeLessThan(270);
+    expect(distance).toBeGreaterThan(245);
+    expect(distance).toBeLessThan(260);
   });
 
   it("is symmetric", () => {

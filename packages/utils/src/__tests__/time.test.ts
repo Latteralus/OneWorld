@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addHours, addMinutes, formatUtcDateKey, formatUtcIsoWeekKey, isPast, minutesBetween } from "../time.js";
+import {
+  addHours,
+  addMinutes,
+  formatUtcDateKey,
+  formatUtcIsoWeekKey,
+  isPast,
+  minutesBetween,
+} from "../time.js";
 
 describe("time", () => {
   it("formats a UTC date key", () => {

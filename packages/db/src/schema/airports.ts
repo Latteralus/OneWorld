@@ -79,9 +79,7 @@ export const airportActivityEvents = pgTable(
     idempotencyKey: text("idempotency_key").notNull(),
     createdAt: createdAtColumn(),
   },
-  (table) => [
-    uniqueIndex("airport_activity_events_idempotency_key_idx").on(table.idempotencyKey),
-  ],
+  (table) => [uniqueIndex("airport_activity_events_idempotency_key_idx").on(table.idempotencyKey)],
 );
 
 export const routeStatistics = pgTable(

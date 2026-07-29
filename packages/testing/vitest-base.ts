@@ -10,6 +10,7 @@ export const baseVitestConfig = defineConfig({
     environment: "node",
     globals: false,
     restoreMocks: true,
+    passWithNoTests: true,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

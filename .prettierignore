@@ -7,3 +7,6 @@ coverage
 .turbo
 pnpm-lock.yaml
 *.tsbuildinfo
+
+# Authoritative source-of-truth spec - never auto-reformatted.
+ProjectDocumentation/
