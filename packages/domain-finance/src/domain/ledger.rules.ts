@@ -10,6 +10,8 @@ export function computeBalanceAfter(currentBalanceCents: Cents, amountCents: Cen
  * section 7.3, kept centralized so every caller formats keys identically.
  */
 export const buildIdempotencyKey = {
+  startingFunds: (playerId: string, accountType: string) =>
+    `onboarding:${playerId}:starting-funds:${accountType}`,
   employmentPay: (employmentId: string, dateKey: string) =>
     `employment:${employmentId}:pay:${dateKey}`,
   housingRent: (tenancyId: string, isoWeekKey: string) => `housing:${tenancyId}:rent:${isoWeekKey}`,

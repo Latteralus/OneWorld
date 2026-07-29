@@ -27,6 +27,8 @@ export const onboardingConfig = {
     quality: "very_poor" as const,
     reliability: "low" as const,
     statusContribution: "low" as const,
+    /** Matches the "very poor" tier's score on `housingConfig.residenceTypes` (section 9.3). */
+    statusScore: 1,
   },
 
   /**

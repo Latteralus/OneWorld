@@ -1,10 +1,11 @@
-import { addCents } from "@oneworld/utils";
+import { addCents, cents } from "@oneworld/utils";
 import type { FinancialAccountId, LedgerEntryId } from "@oneworld/contracts";
 import type {
   FinancialAccount,
   LedgerEntry,
   LedgerEntryInput,
   LedgerRepository,
+  OpenAccountInput,
 } from "../domain/ledger.types.js";
 
 let sequence = 0;
@@ -37,6 +38,28 @@ export class InMemoryLedgerRepository implements LedgerRepository {
 
   async findByIdempotencyKey(idempotencyKey: string): Promise<LedgerEntry | undefined> {
     return this.entriesByIdempotencyKey.get(idempotencyKey);
+  }
+
+  async findAccount(
+    ownerId: string,
+    accountType: FinancialAccount["accountType"],
+  ): Promise<FinancialAccount | undefined> {
+    return [...this.accounts.values()].find(
+      (account) => account.ownerId === ownerId && account.accountType === accountType,
+    );
+  }
+
+  async openAccount(input: OpenAccountInput): Promise<FinancialAccount> {
+    const account: FinancialAccount = {
+      id: nextId() as FinancialAccountId,
+      ownerType: input.ownerType,
+      ownerId: input.ownerId,
+      accountType: input.accountType,
+      currency: "USD",
+      cachedBalanceCents: cents(0),
+    };
+    this.accounts.set(account.id, account);
+    return account;
   }
 
   async postEntryIfNew(input: LedgerEntryInput): Promise<{ entry: LedgerEntry; wasNew: boolean }> {
@@ -74,5 +97,10 @@ export class InMemoryLedgerRepository implements LedgerRepository {
 
   entriesFor(accountId: FinancialAccountId): LedgerEntry[] {
     return this.entriesByAccount.get(accountId) ?? [];
+  }
+
+  async listRecentEntries(accountId: FinancialAccountId, limit: number): Promise<LedgerEntry[]> {
+    const entries = this.entriesByAccount.get(accountId) ?? [];
+    return [...entries].reverse().slice(0, limit);
   }
 }

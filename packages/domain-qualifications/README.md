@@ -15,8 +15,14 @@ and eligibility _evaluation_ against these hours belong to
 import {
   applyHourIncrements,
   buildFlightHourIdempotencyKey,
+  QualificationService,
+  DrizzleQualificationRepository,
+  InMemoryQualificationRepository,
 } from "@oneworld/domain-qualifications";
-import type { PilotHourTotals } from "@oneworld/domain-qualifications";
+import type {
+  PilotHourTotals,
+  GrantStartingQualificationInput,
+} from "@oneworld/domain-qualifications";
 ```
 
 ## Key invariants
@@ -31,9 +37,13 @@ import type { PilotHourTotals } from "@oneworld/domain-qualifications";
 
 ## Roadmap status
 
-Phase 0 delivers the pure hour-increment math above. Hour awarding wired
-to flight completion lands in Phase 6; qualification awarding wired to
-check flights lands in Phase 7, per the implementation roadmap.
+Phase 0 delivers the pure hour-increment math above. Phase 1 adds
+`QualificationService.grantStartingQualification` - the starting-PPL grant
+plus zeroed `pilot_hour_totals` initialization used by
+`domain-players`' `OnboardingService` during onboarding, all inside the
+caller's shared transaction. Hour awarding wired to flight completion
+still lands in Phase 6; qualification awarding wired to check flights
+still lands in Phase 7, per the implementation roadmap.
 
 ## Testing
 

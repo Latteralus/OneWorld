@@ -5,18 +5,40 @@ canonical OneWorld airport model (spec section 12.1).
 
 ## Ownership
 
-This package owns **normalization only** - turning a raw external row
-into a `CanonicalAirportRecord`. It does not own the `airports` table
-(that's `@oneworld/db`) or airport game state (`@oneworld/domain-airports`).
-The import _job_ that reads a dataset, calls an adapter, and upserts into
-Postgres is a worker responsibility (spec section 25.1), not this
-package's.
+This package owns **normalization and the import run** - turning a raw
+external row into a `CanonicalAirportRecord`, deciding preview
+eligibility, and upserting into the canonical `airports` table (identity
+only). It does not own `airport_game_state` - that's
+`@oneworld/domain-airports`, which this package calls into
+(`AirportService.ensureGameState`) once per preview-enabled airport so
+game state initialization stays behind that domain's own service
+boundary (spec section 24.1).
+
+Airport import isn't in the worker's fixed section-25.1 job list, so it
+isn't registered with `apps/worker`'s `Scheduler` - it's a standalone,
+idempotent script run manually or via an external cron.
 
 ## Public API
 
 ```ts
-import { ourAirportsAdapter } from "@oneworld/data-import-airports";
-import type { AirportImportAdapter, CanonicalAirportRecord } from "@oneworld/data-import-airports";
+import {
+  ourAirportsAdapter,
+  parseCsv,
+  isPreviewEligible,
+  runAirportImport,
+} from "@oneworld/data-import-airports";
+import type {
+  AirportImportAdapter,
+  CanonicalAirportRecord,
+  AirportImportSink,
+} from "@oneworld/data-import-airports";
+```
+
+Run an import:
+
+```bash
+pnpm --filter @oneworld/data-import-airports import
+# override the source: AIRPORT_IMPORT_SOURCE_URL=... pnpm --filter @oneworld/data-import-airports import
 ```
 
 ## Key invariants
@@ -28,15 +50,30 @@ import type { AirportImportAdapter, CanonicalAirportRecord } from "@oneworld/dat
   wired into a production import job.
 - `normalize()` returns `undefined` for rows that don't map to a supported
   physical tier (e.g. heliports, closed airports) rather than guessing.
+- `isPreviewEligible` resolves spec section 35 open item #2
+  ("preview region vs. worldwide airports") as a placeholder: active +
+  U.S.-country-code airports are preview-enabled. See
+  `@oneworld/config`'s `airportConfig.previewCountryCodes`.
+- `runAirportImport` is safe to run repeatedly - every write it triggers
+  is an upsert (`airports`, keyed on `ident`) or an idempotent ensure
+  (`airport_game_state`), never a duplicate insert (section 25.2).
 
 ## Roadmap status
 
-Phase 0 delivers the adapter interface and one working adapter
-(OurAirports). The scheduled import job and `preview_enabled` curation
-land in Phase 1 per the implementation roadmap.
+Phase 0 delivered the adapter interface and the OurAirports adapter.
+Phase 1 adds `parseCsv`, `isPreviewEligible`, `runAirportImport`, the
+Drizzle-backed catalog writer, and the runnable `import` script - the
+airport importer and `preview_enabled` curation called for by the
+roadmap.
 
 ## Testing
 
 ```bash
 pnpm --filter @oneworld/data-import-airports test
 ```
+
+`csv.test.ts`/`preview.test.ts`/`import.test.ts` cover parsing, curation,
+and orchestration with fakes (no database). The `import` script itself
+was manually verified against the live OurAirports export mirror
+(85,817 rows -> 47,975 normalized -> 16,171 U.S. preview-enabled) - see
+`SOURCES.md`.

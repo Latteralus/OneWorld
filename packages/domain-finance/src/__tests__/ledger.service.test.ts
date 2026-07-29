@@ -78,3 +78,61 @@ describe("LedgerService.postEntry", () => {
     ).rejects.toThrow(RangeError);
   });
 });
+
+describe("LedgerService.openAccount", () => {
+  it("opens a new zero-balance account", async () => {
+    const repo = new InMemoryLedgerRepository();
+    const service = new LedgerService(repo);
+
+    const account = await service.openAccount({
+      ownerType: "player",
+      ownerId: "player-2",
+      accountType: "personal",
+    });
+
+    expect(account.cachedBalanceCents).toBe(0);
+    expect(account.ownerId).toBe("player-2");
+  });
+
+  it("is idempotent: returns the existing account instead of opening a duplicate", async () => {
+    const repo = new InMemoryLedgerRepository();
+    const service = new LedgerService(repo);
+
+    const first = await service.openAccount({
+      ownerType: "player",
+      ownerId: "player-3",
+      accountType: "company",
+    });
+    const second = await service.openAccount({
+      ownerType: "player",
+      ownerId: "player-3",
+      accountType: "company",
+    });
+
+    expect(second.id).toBe(first.id);
+  });
+});
+
+describe("LedgerService.listRecentEntries", () => {
+  it("returns entries newest-first, capped at the limit", async () => {
+    const { service, accountId } = makeService();
+    await service.postEntry({
+      accountId,
+      amountCents: cents(1_000),
+      category: "civilian_wage",
+      description: "First",
+      idempotencyKey: "test:entry-1",
+    });
+    await service.postEntry({
+      accountId,
+      amountCents: cents(2_000),
+      category: "civilian_wage",
+      description: "Second",
+      idempotencyKey: "test:entry-2",
+    });
+
+    const recent = await service.listRecentEntries(accountId, 1);
+    expect(recent).toHaveLength(1);
+    expect(recent[0]?.description).toBe("Second");
+  });
+});

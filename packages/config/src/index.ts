@@ -14,3 +14,4 @@ export * from "./qualification.config.js";
 export * from "./training.config.js";
 export * from "./tracker.config.js";
 export * from "./feature-flags.config.js";
+export * from "./world.config.js";

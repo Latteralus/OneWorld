@@ -22,6 +22,8 @@
     "db:generate": "pnpm --filter @oneworld/db generate",
     "db:migrate": "pnpm --filter @oneworld/db migrate",
     "db:studio": "pnpm --filter @oneworld/db studio",
+    "world:import-airports": "pnpm --filter @oneworld/data-import-airports import",
+    "world:seed-cities": "pnpm --filter @oneworld/domain-locations seed",
     "changeset": "changeset",
     "prepare": "node -e \"if (!process.env.CI) { try { require('husky').install() } catch (e) {} }\""
   },

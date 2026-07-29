@@ -79,6 +79,9 @@ pnpm format:check    # Prettier check (CI)
 pnpm db:generate     # generate SQL migrations from the Drizzle schema
 pnpm db:migrate      # apply migrations to DATABASE_URL
 pnpm db:studio       # inspect data with Drizzle Studio
+
+pnpm world:import-airports  # import the canonical airport catalog (run first)
+pnpm world:seed-cities      # seed starting cities and their airport links (run after)
 ```
 
 Run a command against a single package with `pnpm --filter <name> <script>`,

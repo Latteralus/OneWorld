@@ -10,6 +10,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "import": "tsx src/scripts/run-import.ts",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,10 +19,14 @@
   },
   "dependencies": {
     "@oneworld/config": "workspace:*",
-    "@oneworld/db": "workspace:*"
+    "@oneworld/contracts": "workspace:*",
+    "@oneworld/db": "workspace:*",
+    "@oneworld/domain-airports": "workspace:*",
+    "drizzle-orm": "^0.38.3"
   },
   "devDependencies": {
     "@oneworld/testing": "workspace:*",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }

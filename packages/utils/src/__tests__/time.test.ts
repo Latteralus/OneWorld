@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDays,
   addHours,
   addMinutes,
   formatUtcDateKey,
@@ -28,6 +29,11 @@ describe("time", () => {
     const start = new Date("2026-07-28T00:00:00Z");
     expect(addMinutes(start, 90).toISOString()).toBe("2026-07-28T01:30:00.000Z");
     expect(addHours(start, 2).toISOString()).toBe("2026-07-28T02:00:00.000Z");
+  });
+
+  it("adds days", () => {
+    const start = new Date("2026-07-28T00:00:00Z");
+    expect(addDays(start, 7).toISOString()).toBe("2026-08-04T00:00:00.000Z");
   });
 
   it("computes minutes between two timestamps", () => {

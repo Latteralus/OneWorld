@@ -10,6 +10,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "seed": "tsx src/scripts/seed-cities.ts",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -20,10 +21,12 @@
     "@oneworld/config": "workspace:*",
     "@oneworld/contracts": "workspace:*",
     "@oneworld/db": "workspace:*",
-    "@oneworld/utils": "workspace:*"
+    "@oneworld/utils": "workspace:*",
+    "drizzle-orm": "^0.38.3"
   },
   "devDependencies": {
     "@oneworld/testing": "workspace:*",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }

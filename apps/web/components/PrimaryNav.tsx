@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { AuthStatus } from "./AuthStatus.js";
 
-/** Primary navigation (spec section 26.2). Items beyond Dashboard are placeholders until their phase lands. */
+/** Primary navigation (spec section 26.2). Items beyond Dashboard/Map/Airports are placeholders until their phase lands. */
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/airports", label: "Map / Airports" },
@@ -17,16 +18,19 @@ const NAV_ITEMS = [
 
 export function PrimaryNav() {
   return (
-    <nav className="flex flex-wrap gap-1 border-b border-neutral-800 px-4 py-2 text-sm">
-      {NAV_ITEMS.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className="rounded px-3 py-1.5 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50"
-        >
-          {item.label}
-        </Link>
-      ))}
+    <nav className="flex flex-wrap items-center justify-between gap-1 border-b border-neutral-800 px-4 py-2 text-sm">
+      <div className="flex flex-wrap gap-1">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded px-3 py-1.5 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+      <AuthStatus />
     </nav>
   );
 }

@@ -15,42 +15,48 @@ Legend: ✅ done · 🟡 partial/scaffolded · ⬜ not started
 
 ## Phase 0 - Repository and Architecture
 
-| Deliverable                            | Status | Notes                                                                                                                                                                                       |
-| -------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monorepo (pnpm workspaces + Turborepo) | ✅     | `pnpm-workspace.yaml`, `turbo.json`                                                                                                                                                         |
-| Shared TypeScript configuration        | ✅     | `tsconfig.base.json`, strict mode                                                                                                                                                           |
-| Linting/formatting/testing             | ✅     | ESLint 9 flat config, Prettier, Vitest (`@oneworld/testing`)                                                                                                                                |
-| CI                                     | ✅     | `.github/workflows/ci.yml` - install, lint, typecheck, test, build                                                                                                                          |
-| Environment validation                 | ✅     | `@oneworld/config#loadEnv()`, Zod-validated, fails fast                                                                                                                                     |
-| Database and migrations                | 🟡     | Full Drizzle schema for all section-23 tables in `@oneworld/db`; no migrations generated yet (requires a running Postgres/Supabase instance - run `pnpm db:generate` once one is available) |
-| Auth                                   | ⬜     | Supabase Auth client wiring exists (`@oneworld/db#getSupabaseBrowserClient/getSupabaseServiceClient`); no login flow yet                                                                    |
-| Contracts package                      | ✅     | `@oneworld/contracts` - branded IDs, state machines, domain events, error codes                                                                                                             |
-| Domain event/outbox foundation         | 🟡     | `domain_events` table + `DomainEvent` envelope type exist; outbox writer/dispatcher not implemented                                                                                         |
-| Finance ledger foundation              | ✅     | `@oneworld/domain-finance` - `LedgerService`, idempotent posting, in-memory + Drizzle repositories, tested                                                                                  |
-| Worker framework                       | ✅     | `@oneworld/worker` - `Scheduler`, structured logging, all 11 section-25.1 jobs registered as documented no-op placeholders                                                                  |
-| Audit logging                          | 🟡     | `audit_log` table + `@oneworld/domain-audit` types exist; no write path yet                                                                                                                 |
+| Deliverable                            | Status | Notes                                                                                                                                                                                                                                                 |
+| -------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo (pnpm workspaces + Turborepo) | ✅     | `pnpm-workspace.yaml`, `turbo.json`                                                                                                                                                                                                                   |
+| Shared TypeScript configuration        | ✅     | `tsconfig.base.json`, strict mode                                                                                                                                                                                                                     |
+| Linting/formatting/testing             | ✅     | ESLint 9 flat config, Prettier, Vitest (`@oneworld/testing`)                                                                                                                                                                                          |
+| CI                                     | ✅     | `.github/workflows/ci.yml` - install, lint, typecheck, test, build                                                                                                                                                                                    |
+| Environment validation                 | ✅     | `@oneworld/config#loadEnv()`, Zod-validated, fails fast                                                                                                                                                                                               |
+| Database and migrations                | ✅     | Full Drizzle schema for all section-23 tables; first migration generated (`packages/db/migrations/0000_happy_karen_page.sql`) - generation needed a `drizzle-kit` bump to 0.31.10 to fix a NodeNext `.js`-extension resolution bug, no schema changes |
+| Auth                                   | 🟡     | Email/password sign up, sign in, sign out via `@supabase/ssr` (`apps/web/app/{login,signup,logout}`, `middleware.ts`); no password reset, OAuth, or email-verification UI yet                                                                         |
+| Contracts package                      | ✅     | `@oneworld/contracts` - branded IDs, state machines, domain events, error codes                                                                                                                                                                       |
+| Domain event/outbox foundation         | 🟡     | `domain_events` table + `DomainEvent` envelope type exist; outbox writer/dispatcher not implemented                                                                                                                                                   |
+| Finance ledger foundation              | ✅     | `@oneworld/domain-finance` - `LedgerService`, idempotent posting, in-memory + Drizzle repositories, tested                                                                                                                                            |
+| Worker framework                       | ✅     | `@oneworld/worker` - `Scheduler`, structured logging, all 11 section-25.1 jobs registered as documented no-op placeholders                                                                                                                            |
+| Audit logging                          | 🟡     | `audit_log` table + `@oneworld/domain-audit` types exist; no write path yet                                                                                                                                                                           |
 
 **Exit criteria:**
 
 - [x] All apps build (`pnpm build` - verify locally/CI; see note below).
 - [x] Local development works from documented commands (each app/package README).
-- [x] CI runs tests and migrations safely (migrations step is a no-op until Phase 1's first migration is generated).
+- [x] CI runs tests and migrations safely (migrations now apply real schema, not a no-op).
 - [x] A sample idempotent ledger transaction works - see
       `packages/domain-finance/src/__tests__/ledger.service.test.ts`
       ("is idempotent: replaying the same key does not duplicate money").
 
 ## Phase 1 - Airport World and Player Onboarding
 
-| Deliverable                                | Status                                                                                                     |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Airport importer and canonical catalog     | 🟡 `@oneworld/data-import-airports` has a working OurAirports adapter + tests; no scheduled import job yet |
-| Preview airport selection                  | ⬜                                                                                                         |
-| Cities and airport links                   | 🟡 schema exists (`cities`, `city_airports`); no service                                                   |
-| Map and airport pages                      | ⬜                                                                                                         |
-| Player creation                            | 🟡 types only (`@oneworld/domain-players`)                                                                 |
-| Starting PPL, apartment, car, and balances | 🟡 config defaults exist (`@oneworld/config#onboardingConfig`); no grant service                           |
-| Current location                           | 🟡 `@oneworld/domain-locations` guard rules + types; no persistence service                                |
-| Dashboard                                  | 🟡 `apps/web` dashboard page renders config defaults as placeholder data                                   |
+| Deliverable                                | Status                                                                                                                                                                                                                                                                      |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Airport importer and canonical catalog     | ✅ `@oneworld/data-import-airports`'s `runAirportImport` + `DrizzleAirportCatalogRepository` + `pnpm --filter @oneworld/data-import-airports import` script; verified against the live OurAirports export (85,817 rows -> 47,975 normalized -> 16,171 U.S. preview-enabled) |
+| Preview airport selection                  | ✅ resolves spec section 35 open item #2 (placeholder): U.S.-only, via `isPreviewEligible`/`airportConfig.previewCountryCodes`                                                                                                                                              |
+| Cities and airport links                   | ✅ `@oneworld/domain-locations`'s `CityService` + `worldConfig.startingCities` (5 curated metro areas) + `pnpm --filter @oneworld/domain-locations seed`                                                                                                                    |
+| Map and airport pages                      | ✅ `apps/web` `/airports` (search/filter + MapLibre map + list) and `/airports/[id]` (detail, nearby airports); passengers/aircraft/jobs sections correctly show as not-yet-implemented placeholders pending Phases 2/4/5                                                   |
+| Player creation                            | ✅ `@oneworld/domain-players`'s `PlayerService`/`OnboardingService`, Supabase Auth sign-up (`apps/web/app/signup`) + onboarding wizard (`apps/web/app/onboarding`)                                                                                                          |
+| Starting PPL, apartment, car, and balances | ✅ `OnboardingService.completeOnboarding` grants all four atomically via `runOnboardingTransaction` (one Postgres transaction composing `domain-finance`/`domain-housing`/`domain-vehicles`/`domain-qualifications`/`domain-locations`)                                     |
+| Current location                           | ✅ `@oneworld/domain-locations`'s `LocationService` get/set, backed by `DrizzleLocationRepository`; set to the home city during onboarding                                                                                                                                  |
+| Dashboard                                  | ✅ `apps/web/app/dashboard` reads real profile, location, balances, residence, vehicle, qualification, and recent ledger entries                                                                                                                                            |
+
+**Exit criteria:**
+
+- [x] New player can complete onboarding - sign up -> onboarding form -> dashboard, exercised via `pnpm --filter @oneworld/web build`'s route generation and `OnboardingService`'s unit tests; **not exercised against a live Supabase/Postgres instance in this environment** (none available) - see the gap noted below.
+- [x] Starting assets are granted exactly once - `runOnboardingTransaction` runs the whole grant in one transaction; `OnboardingService.completeOnboarding` returns `alreadyOnboarded: true` without re-granting on replay (tested in `packages/domain-players/src/__tests__/onboarding.service.test.ts`).
+- [x] Airport search/map work - `AirportService.search`/`listNearby` tested with an in-memory repository; the import pipeline was manually verified against real data (see table above). Live map rendering against a seeded database was not exercised in this environment.
 
 ## Phase 2 - Employment and Recurring Economy
 
@@ -121,3 +127,18 @@ or load tests yet.
 - **Known architectural gap**: the worker's `Scheduler` has no distributed
   locking/claim mechanism (spec section 25.2) - fine for a single worker
   instance, required before scaling to more than one.
+- **Cross-domain transactions**: every `Drizzle*Repository` constructor
+  takes `@oneworld/db`'s `DbOrTx` (not `Database`) so several domains'
+  repositories can be composed against the same `tx` inside one
+  `db.transaction(...)` call - the pattern `OnboardingService`/
+  `runOnboardingTransaction` uses to grant all starting assets atomically.
+  Follow this when any future orchestration needs the same guarantee
+  (e.g. Phase 6 flight settlement).
+- **Not exercised end-to-end**: no live Supabase/Postgres instance was
+  available in the environment this Phase 1 work was built in. Every
+  service has unit-test coverage against in-memory repositories, the web
+  app builds and its route tree was verified, and the airport import was
+  run against live real-world data - but nobody has yet run
+  `pnpm db:migrate` against a real database, signed up a real user, or
+  clicked through onboarding in a browser. Do that before calling Phase 1
+  done in the field.

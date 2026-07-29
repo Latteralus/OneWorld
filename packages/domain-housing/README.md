@@ -12,7 +12,11 @@ other domains but does not own them.
 ## Public API
 
 ```ts
-import { calculateStatusScore } from "@oneworld/domain-housing";
+import {
+  calculateStatusScore,
+  HousingService,
+  DrizzleHousingRepository,
+} from "@oneworld/domain-housing";
 ```
 
 ## State machine
@@ -35,9 +39,12 @@ section 9.1). The state union lives in `@oneworld/contracts`
 
 ## Roadmap status
 
-Phase 0 delivers the pure status-score math above. Tenancy records, the
-rent worker, and eviction/grace-period handling land in Phase 2 per the
-implementation roadmap.
+Phase 0 delivers the pure status-score math above. Phase 1 adds
+`HousingService.grantStartingResidence`, the starting-residence grant used
+by onboarding to give every new player their Run-Down Apartment exactly
+once. The full tenancy lifecycle - rent worker, overdue/grace-period
+handling, and eviction - still lands in Phase 2 per the implementation
+roadmap.
 
 ## Testing
 

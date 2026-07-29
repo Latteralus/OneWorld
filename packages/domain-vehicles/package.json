@@ -20,7 +20,8 @@
     "@oneworld/config": "workspace:*",
     "@oneworld/contracts": "workspace:*",
     "@oneworld/db": "workspace:*",
-    "@oneworld/utils": "workspace:*"
+    "@oneworld/utils": "workspace:*",
+    "drizzle-orm": "^0.38.3"
   },
   "devDependencies": {
     "@oneworld/testing": "workspace:*",

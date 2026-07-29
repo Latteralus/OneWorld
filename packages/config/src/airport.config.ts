@@ -39,6 +39,14 @@ export const airportConfig = {
   /** Bounded decay so activity reflects recent use without erasing history (15.3). */
   activityDecayPointsPerHour: 1,
   activityDecayFloor: 0,
+  /**
+   * Resolves spec section 35 open item #2 ("preview region vs. worldwide
+   * airports"): the preview launches U.S.-only. An imported airport gets
+   * `previewEnabled = true` when its country code is in this list and its
+   * status is active - see `@oneworld/data-import-airports`'s
+   * `isPreviewEligible`. Placeholder pending real curation/testing.
+   */
+  previewCountryCodes: ["US"] as string[],
 } as const;
 
 export type AirportConfig = typeof airportConfig;

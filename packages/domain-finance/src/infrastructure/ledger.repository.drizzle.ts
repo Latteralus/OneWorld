@@ -1,5 +1,5 @@
-import { eq } from "drizzle-orm";
-import type { Database } from "@oneworld/db";
+import { and, desc, eq } from "drizzle-orm";
+import type { DbOrTx } from "@oneworld/db";
 import { schema } from "@oneworld/db";
 import { cents } from "@oneworld/utils";
 import type { FinancialAccountId, LedgerEntryId } from "@oneworld/contracts";
@@ -8,6 +8,7 @@ import type {
   LedgerEntry,
   LedgerEntryInput,
   LedgerRepository,
+  OpenAccountInput,
 } from "../domain/ledger.types.js";
 import { computeBalanceAfter } from "../domain/ledger.rules.js";
 
@@ -45,7 +46,7 @@ function toDomainEntry(row: typeof schema.ledgerEntries.$inferSelect): LedgerEnt
  * for scarce pool reservations" applies equally to account balances).
  */
 export class DrizzleLedgerRepository implements LedgerRepository {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: DbOrTx) {}
 
   async getAccount(accountId: FinancialAccountId): Promise<FinancialAccount> {
     const [row] = await this.db
@@ -62,6 +63,47 @@ export class DrizzleLedgerRepository implements LedgerRepository {
       .from(schema.ledgerEntries)
       .where(eq(schema.ledgerEntries.idempotencyKey, idempotencyKey));
     return row ? toDomainEntry(row) : undefined;
+  }
+
+  async findAccount(
+    ownerId: string,
+    accountType: FinancialAccount["accountType"],
+  ): Promise<FinancialAccount | undefined> {
+    const [row] = await this.db
+      .select()
+      .from(schema.financialAccounts)
+      .where(
+        and(
+          eq(schema.financialAccounts.ownerId, ownerId),
+          eq(schema.financialAccounts.accountType, accountType),
+        ),
+      );
+    return row ? toDomainAccount(row) : undefined;
+  }
+
+  async listRecentEntries(accountId: FinancialAccountId, limit: number): Promise<LedgerEntry[]> {
+    const rows = await this.db
+      .select()
+      .from(schema.ledgerEntries)
+      .where(eq(schema.ledgerEntries.accountId, accountId))
+      .orderBy(desc(schema.ledgerEntries.createdAt))
+      .limit(limit);
+    return rows.map(toDomainEntry);
+  }
+
+  async openAccount(input: OpenAccountInput): Promise<FinancialAccount> {
+    const [row] = await this.db
+      .insert(schema.financialAccounts)
+      .values({
+        ownerType: input.ownerType,
+        ownerId: input.ownerId,
+        accountType: input.accountType,
+        currency: "USD",
+        cachedBalanceCents: 0,
+      })
+      .returning();
+    if (!row) throw new Error("Failed to open financial account");
+    return toDomainAccount(row);
   }
 
   async postEntryIfNew(input: LedgerEntryInput): Promise<{ entry: LedgerEntry; wasNew: boolean }> {

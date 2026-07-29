@@ -38,6 +38,10 @@ export function addHours(date: Date, hours: number): Date {
   return addMinutes(date, hours * 60);
 }
 
+export function addDays(date: Date, days: number): Date {
+  return addHours(date, days * 24);
+}
+
 export function isPast(date: Date, referenceNow: Date = nowUtc()): boolean {
   return date.getTime() <= referenceNow.getTime();
 }

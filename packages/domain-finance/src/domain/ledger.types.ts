@@ -57,6 +57,13 @@ export interface LedgerEntry {
   balanceAfterCents: Cents;
 }
 
+/** Everything the caller supplies to open one financial account (spec section 7.1). */
+export interface OpenAccountInput {
+  ownerType: OwnerType;
+  ownerId: string;
+  accountType: AccountType;
+}
+
 /**
  * Repository interface owned by this domain (spec section 20.4: repository
  * interfaces sit above infrastructure). `postEntryIfNew` must be atomic and
@@ -65,6 +72,11 @@ export interface LedgerEntry {
  */
 export interface LedgerRepository {
   getAccount(accountId: FinancialAccountId): Promise<FinancialAccount>;
+  /** Returns the existing account for this owner/type if one is already open, so opening is idempotent. */
+  findAccount(ownerId: string, accountType: AccountType): Promise<FinancialAccount | undefined>;
+  openAccount(input: OpenAccountInput): Promise<FinancialAccount>;
   findByIdempotencyKey(idempotencyKey: string): Promise<LedgerEntry | undefined>;
   postEntryIfNew(input: LedgerEntryInput): Promise<{ entry: LedgerEntry; wasNew: boolean }>;
+  /** Most recent entries for an account, newest first (spec section 26.3: "recent transactions"). */
+  listRecentEntries(accountId: FinancialAccountId, limit: number): Promise<LedgerEntry[]>;
 }

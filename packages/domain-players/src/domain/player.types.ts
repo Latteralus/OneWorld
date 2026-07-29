@@ -20,3 +20,14 @@ export interface CreatePlayerInput {
   homeCityId: CityId;
   homeAirportId: AirportId;
 }
+
+/**
+ * Repository interface owned by this domain (spec section 20.4).
+ * `profiles.id` matches the Supabase Auth user id (section 23.1) - it is
+ * never a separately-minted id, so `findById` takes the auth user id.
+ */
+export interface PlayerRepository {
+  findById(playerId: PlayerId): Promise<PlayerProfile | undefined>;
+  findByUsername(username: string): Promise<PlayerProfile | undefined>;
+  insertProfile(input: CreatePlayerInput): Promise<PlayerProfile>;
+}

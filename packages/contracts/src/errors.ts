@@ -20,6 +20,7 @@ export const domainErrorCodes = [
   "IDEMPOTENCY_CONFLICT",
   "NOT_AUTHENTICATED",
   "NOT_AUTHORIZED",
+  "USERNAME_TAKEN",
 ] as const;
 
 export type DomainErrorCode = (typeof domainErrorCodes)[number];

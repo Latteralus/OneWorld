@@ -16,6 +16,9 @@ import {
   calculateVehicleFuelCostCents,
   calculateMileageAfterTrip,
   calculateLifespanFractionUsed,
+  pickRandomStartingMileage,
+  VehicleService,
+  DrizzleVehicleRepository,
 } from "@oneworld/domain-vehicles";
 ```
 
@@ -30,9 +33,12 @@ import {
 
 ## Roadmap status
 
-Phase 0 delivers the pure vehicle math above. Vehicle purchase, ownership
-records, and the weekly-maintenance worker integration land alongside
-Phase 2/3 per the implementation roadmap.
+Phase 0 delivers the pure vehicle math above. Phase 1 adds
+`VehicleService.grantStartingVehicle`, the starting-vehicle grant used by
+onboarding to give every new player their 1996 Hunda Attord exactly once,
+fully fueled and owned outright. Purchase/resale flows and the
+weekly-maintenance worker integration land alongside Phase 2/3 per the
+implementation roadmap.
 
 ## Testing
 

@@ -20,8 +20,14 @@ import {
 
 const ledger = new LedgerService(new DrizzleLedgerRepository(getDb()));
 
+const account = await ledger.openAccount({
+  ownerType: "player",
+  ownerId: playerId,
+  accountType: "personal",
+});
+
 await ledger.postEntry({
-  accountId,
+  accountId: account.id,
   amountCents: cents(-80_000),
   category: "weekly_rent",
   description: "Weekly rent - Run-Down Apartment",
@@ -43,7 +49,10 @@ cache, reconciled against the ledger by the worker's reconciliation job
 - **Idempotency** (7.3): `postEntry` is safe to call more than once with
   the same `idempotencyKey` - the second call returns the original entry
   unchanged. Use `buildIdempotencyKey` so every caller formats keys
-  identically to the examples in the spec.
+  identically to the examples in the spec. `openAccount` is likewise safe
+  to call more than once for the same `ownerId`/`accountType` - it returns
+  the existing account rather than opening a duplicate (used by
+  `domain-players`' onboarding grant, Phase 1).
 - Amounts are always `Cents` (`@oneworld/utils`), never floating-point
   dollars (section 31.2).
 - The Postgres repository takes a row lock on the account (`FOR UPDATE`)

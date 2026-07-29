@@ -42,3 +42,11 @@ export function calculateLifespanFractionUsed(
   }
   return Math.min(1, currentMileage / expectedLifespanMiles);
 }
+
+/** Inclusive random starting mileage for a granted vehicle (spec section 6.4). */
+export function pickRandomStartingMileage(min: number, max: number): number {
+  if (min > max) {
+    throw new RangeError("min must not be greater than max");
+  }
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}

@@ -4,6 +4,7 @@ import {
   calculateMileageAfterTrip,
   calculateVehicleFuelCostCents,
   calculateVehicleFuelUseGallons,
+  pickRandomStartingMileage,
 } from "../domain/vehicle.rules.js";
 
 describe("calculateVehicleFuelUseGallons", () => {
@@ -33,5 +34,25 @@ describe("calculateLifespanFractionUsed", () => {
   it("computes the fraction and clamps at 1", () => {
     expect(calculateLifespanFractionUsed(125_000, 250_000)).toBeCloseTo(0.5, 6);
     expect(calculateLifespanFractionUsed(300_000, 250_000)).toBe(1);
+  });
+});
+
+describe("pickRandomStartingMileage", () => {
+  it("stays within the inclusive bounds across many draws", () => {
+    // Starting car mileage range (spec section 6.4).
+    for (let i = 0; i < 200; i += 1) {
+      const mileage = pickRandomStartingMileage(170_000, 235_000);
+      expect(mileage).toBeGreaterThanOrEqual(170_000);
+      expect(mileage).toBeLessThanOrEqual(235_000);
+      expect(Number.isInteger(mileage)).toBe(true);
+    }
+  });
+
+  it("allows min === max", () => {
+    expect(pickRandomStartingMileage(100, 100)).toBe(100);
+  });
+
+  it("rejects an invalid range", () => {
+    expect(() => pickRandomStartingMileage(200, 100)).toThrow(RangeError);
   });
 });

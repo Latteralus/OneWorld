@@ -14,3 +14,15 @@ export type PlayerLocation =
   | { playerId: PlayerId; locationType: "IN_SIMULATOR_FLIGHT"; activeFlightId: string };
 
 export type { PlayerLocationType };
+
+/**
+ * Repository interface owned by this domain (spec section 20.4, 21.2:
+ * "player current location -> location/travel domain"). `setLocation` is a
+ * full replace (the row is a single current-state record, not a log), so
+ * it is naturally idempotent - setting the same location twice is a no-op
+ * in effect.
+ */
+export interface LocationRepository {
+  getLocation(playerId: PlayerId): Promise<PlayerLocation | undefined>;
+  setLocation(location: PlayerLocation): Promise<PlayerLocation>;
+}

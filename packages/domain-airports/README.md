@@ -18,6 +18,12 @@ import {
   decayActivityScore,
   calculateActivityPointsForCompletedFlight,
 } from "@oneworld/domain-airports";
+
+import { AirportService, DrizzleAirportRepository } from "@oneworld/domain-airports";
+const airports = new AirportService(new DrizzleAirportRepository(getDb()));
+await airports.ensureGameState({ airportId, physicalTier }); // called once per imported airport
+const results = await airports.search({ query: "denver", physicalTier: "major_airport" });
+const nearby = await airports.listNearby(airport, 75, 8);
 ```
 
 ## Key invariants
@@ -33,8 +39,10 @@ import {
 
 ## Roadmap status
 
-Phase 0 delivers the pure activity/target math above. The airport
-importer, catalog queries, and map data land in Phase 1; passenger-pool
+Phase 0 delivered the pure activity/target math. Phase 1 adds
+`AirportService`: `ensureGameState` (called by the import job for each
+newly-catalogued airport), and the browse/search/nearby read path backing
+the map and airport pages (spec section 26.4, 12.4). Passenger-pool
 integration lands in Phase 4 per the implementation roadmap.
 
 ## Testing

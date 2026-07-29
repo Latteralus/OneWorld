@@ -14,6 +14,25 @@ guard rules for what is allowed in each state.
 ```ts
 import { isPlayerAtAirport, canPerformLocationDependentAction } from "@oneworld/domain-locations";
 import type { PlayerLocation } from "@oneworld/domain-locations";
+
+import { LocationService, DrizzleLocationRepository } from "@oneworld/domain-locations";
+const locations = new LocationService(new DrizzleLocationRepository(getDb()));
+await locations.setLocation({ playerId, locationType: "AIRPORT", airportId });
+
+// City catalog (spec section 23.2) also lives here - a starting city links
+// to the airports a new player may pick as their home airport.
+import { CityService, DrizzleCityRepository } from "@oneworld/domain-locations";
+const cities = new CityService(new DrizzleCityRepository(getDb()));
+await cities.seedStartingCities(worldConfig.startingCities); // idempotent
+const airports = await cities.listAirportsForCity(cityId);
+```
+
+Seed the starting cities from a terminal (run _after_ the airport import, so
+`worldConfig.startingCities`' airport idents resolve):
+
+```bash
+pnpm --filter @oneworld/data-import-airports import
+pnpm --filter @oneworld/domain-locations seed
 ```
 
 ## Key invariants
@@ -29,9 +48,11 @@ import type { PlayerLocation } from "@oneworld/domain-locations";
 
 ## Roadmap status
 
-Phase 0 delivers the pure guard rules above. The location-update service,
-wired to travel and flight completion, lands in Phase 1/3 per the
-implementation roadmap.
+Phase 0 delivered the pure guard rules. Phase 1 adds `LocationService`
+(get/set current location, used by onboarding to place a new player at
+their home city) and `CityService` (the starting-city/airport-link catalog
+used by character creation). Wiring travel/flight completion to update
+location automatically is Phase 3/6.
 
 ## Testing
 

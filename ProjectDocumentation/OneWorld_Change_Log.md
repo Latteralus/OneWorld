@@ -39,7 +39,7 @@ Tracks resolution of the fifteen open items from spec section 35. "Resolved (pla
 | # | Open item (section 35) | Status | Resolution |
 |---|---|---|---|
 | 1 | Starting personal/company balances | Resolved | $2,500 personal / $5,000 company, matching the spec's recommended defaults exactly (`economy.config.ts`). |
-| 2 | Preview region vs. worldwide airports | **Open** | Not decided. `airports.preview_enabled` flag exists in the schema; no region/curation logic yet. |
+| 2 | Preview region vs. worldwide airports | Resolved (placeholder) | U.S.-only for the preview launch: `isPreviewEligible` (`@oneworld/data-import-airports`) gates on `airportConfig.previewCountryCodes` (`@oneworld/config`, currently `["US"]`) and active status. Verified against the live OurAirports export: 16,171 of 47,975 normalized airports are U.S. Untested against real curation/balance needs - may need narrowing (e.g. a handful of metro areas) or widening later. |
 | 3 | Exact supported aircraft list | Resolved (placeholder) | The ten candidate aircraft from spec section 16.3 seeded as-is in `aircraft.config.ts`. Subject to simulator-availability testing. |
 | 4 | Wet vs. dry rental model | Resolved | Wet (hourly, fuel included) chosen for preview clarity, per spec section 16.7's guidance to pick one. |
 | 5 | Passenger rate / minimum fare | Resolved | $1.25/passenger-NM, $75 minimum fare - the spec's own recommended defaults (`job.config.ts`). |
@@ -62,6 +62,105 @@ Tracks resolution of the fifteen open items from spec section 35. "Resolved (pla
 ---
 
 ## Change History
+
+### 2026-07-28 - Phase 1: Airport World and Player Onboarding
+
+**Spec sections touched:** 6 (Onboarding), 7 (Accounts/Ledger), 9 (Housing),
+10 (Vehicles), 11 (Location), 12 (Airport Catalog/Map), 17 (Qualifications),
+20-24 (architecture/ownership/services), 26.3-26.4 (Dashboard, Airport
+Browser), 28.1 (Auth), 32 (Phase 1 of the roadmap), 35 open item #2.
+
+**What changed:**
+
+- **Database**: generated the first real migration
+  (`packages/db/migrations/0000_happy_karen_page.sql`) covering every
+  Phase 0 table - `drizzle-kit` needed a bump from 0.30.1 to 0.31.10 to fix
+  a NodeNext `.js`-extension module-resolution bug that made `generate`
+  crash; no schema changes.
+- **Airport import**: `@oneworld/data-import-airports` gained a real CSV
+  parser (`parseCsv`), preview curation (`isPreviewEligible`), an
+  orchestrator (`runAirportImport`), a Drizzle catalog writer
+  (`DrizzleAirportCatalogRepository`), and a runnable script
+  (`pnpm --filter @oneworld/data-import-airports import`). Verified against
+  the live OurAirports export mirror, not just fixtures.
+- **Airport catalog reads**: `@oneworld/domain-airports` gained
+  `AirportService`/`DrizzleAirportRepository` - search/filter, get-by-id,
+  and nearest-airports, plus `ensureGameState` for newly-imported airports.
+- **Cities**: new `worldConfig.startingCities` (`@oneworld/config`, 5
+  curated U.S. metro areas with linked airports) and
+  `@oneworld/domain-locations`'s `CityService`, seeded via
+  `pnpm --filter @oneworld/domain-locations seed`.
+- **Player location**: `@oneworld/domain-locations`'s `LocationService`
+  (get/set current location), backed by `DrizzleLocationRepository`.
+- **Starting-asset grants**: added `HousingService.grantStartingResidence`/
+  `getActiveResidence`, `VehicleService.grantStartingVehicle`/
+  `getVehicleForPlayer`, `QualificationService.grantStartingQualification`,
+  and `LedgerService.openAccount`/`listRecentEntries` to their respective
+  domains, each with Drizzle + in-memory repositories and tests, following
+  `domain-finance`'s existing layering pattern exactly.
+- **Onboarding orchestration**: `@oneworld/domain-players` gained
+  `PlayerService`, `OnboardingService` (composes finance/housing/vehicles/
+  qualifications/locations - see that package's README for why this one
+  domain is allowed to do that), and `runOnboardingTransaction`, which runs
+  the whole grant inside one Postgres transaction.
+- **Cross-domain transaction fix**: every `Drizzle*Repository` constructor
+  across 9 files now accepts `@oneworld/db`'s new `DbOrTx` type instead of
+  `Database` - TypeScript treated the two as incompatible even though
+  they're interchangeable at runtime, which blocked composing several
+  domains' repositories inside one `db.transaction(...)` callback. Fixed at
+  the root (`packages/db/src/client.ts`) rather than casting around it in
+  `OnboardingService`.
+- **Web app**: Supabase Auth email/password sign-up/sign-in/sign-out via
+  `@supabase/ssr` (cookie-based sessions, `middleware.ts` refreshes them);
+  an onboarding wizard (`/onboarding`) driving `runOnboardingTransaction`;
+  the dashboard (`/dashboard`) now reads real profile/location/balances/
+  residence/vehicle/qualification/recent-transactions instead of config
+  placeholders; an airport browser (`/airports`, search + MapLibre map +
+  list) and detail page (`/airports/[id]`, nearby airports, map). Also
+  fixed a real gap: Next.js only auto-loads `.env` files from its own app
+  directory, not the monorepo root, so `apps/web` had no way to see
+  `DATABASE_URL`/Supabase keys at build or runtime - `next.config.ts` now
+  loads the root `.env` explicitly via `dotenv`.
+- Small supporting additions: `@oneworld/utils#addDays`,
+  `@oneworld/domain-finance#buildIdempotencyKey.startingFunds`, a new
+  `USERNAME_TAKEN` domain error code, and
+  `onboardingConfig.startingVehicle.statusScore` (the vehicle config had a
+  string `statusContribution` label but no numeric score, unlike housing's
+  residence types - added `1`, matching the "very poor" tier).
+
+**Decisions made:** resolved section 35 open item #2 (see the Decisions Log
+above) - U.S.-only preview, placeholder.
+
+**Deviations from the spec:** none intentional.
+
+**Process note:** two background subagents built the mechanical,
+well-precedented parts of this session in parallel with the main work -
+`domain-housing`/`domain-vehicles`' starting-grant services, and
+`domain-qualifications`' starting-PPL grant service - each given the exact
+`domain-finance` pattern to copy and verified (typecheck/test/lint) after
+the fact rather than trusted blindly.
+
+**Gaps surfaced:**
+
+- No live Supabase/Postgres instance was available in this environment.
+  Every new service has unit-test coverage against in-memory repositories,
+  `apps/web` builds and its route tree (including auth redirects) was
+  verified against a running `next start`, and the airport import script
+  was run against the real OurAirports export - but nobody has run
+  `pnpm db:migrate` against a real database, signed up a real user, or
+  clicked through onboarding in a browser. Do that before treating Phase 1
+  as field-verified.
+- Auth is email/password only - no password reset, OAuth, or email
+  verification UI. Acceptable for preview, not for a real launch.
+- The OurAirports adapter has no "regional airport" or "international hub"
+  mapping (carried over from Phase 0, now more visible - the U.S. preview
+  catalog is entirely `small_airfield`/`local_airport`/`major_airport`).
+  Flagged in `data-import-airports/SOURCES.md`; needs a separate
+  size/scheduled-service heuristic, not yet built.
+- Dashboard's "pilot hours" is a hardcoded `0.0 hrs` rather than a real
+  read, since no flight can be logged until Phase 6 - accurate today, but
+  will need `QualificationRepository`/`QualificationService` to gain a real
+  hour-totals read before Phase 6 ships.
 
 ### 2026-07-28 - Phase 0: Repository and Architecture scaffold
 
