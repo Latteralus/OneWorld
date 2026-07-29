@@ -63,6 +63,60 @@ Tracks resolution of the fifteen open items from spec section 35. "Resolved (pla
 
 ## Change History
 
+### 2026-07-29 - Vercel deployment fixes for `apps/web`
+
+**Spec sections touched:** none - deployment infrastructure, not spec-governed
+game rules.
+
+**What changed:** first deploy attempt of `apps/web` to Vercel failed three
+times in sequence, each fix surfacing the next problem:
+
+1. **"No Output Directory named 'public' found."** Vercel couldn't
+   auto-detect a single Next.js app from the monorepo root and fell back to
+   treating the project as a static site (which defaults to expecting a
+   `public` output folder; Next.js outputs to `.next`). Fixed by adding
+   `apps/web/vercel.json` (`framework: "nextjs"`, plus `installCommand`/
+   `buildCommand` overrides that `cd ../..` and run
+   `pnpm turbo run build --filter=@oneworld/web`, per Vercel's documented
+   pnpm/Turborepo monorepo pattern) and setting the Vercel project's Root
+   Directory to `apps/web` (dashboard setting, not repo config - done by
+   the user during project import).
+2. **Lockfile/workspace-root ambiguity warning** during the now-succeeding
+   local build ("Next.js inferred your workspace root... detected multiple
+   lockfiles"), caused by a stray lockfile outside the repo on the dev
+   machine. Harmless locally but a real risk on Vercel - a misdetected
+   tracing root can silently drop workspace-package files from a
+   serverless function's deployment bundle, producing a build that
+   succeeds but crashes at runtime. Fixed by pinning
+   `outputFileTracingRoot` explicitly in `apps/web/next.config.ts` to the
+   monorepo root.
+3. **`Error: Invalid environment configuration: DATABASE_URL: Required`**
+   even with the variable correctly set in Vercel Project Settings.
+   Turborepo 2.x only passes env vars through to a task's process that are
+   explicitly declared in `turbo.json`; ours only declared `NODE_ENV`, so
+   every other var (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, etc.) was
+   silently stripped before `next build` ran - confirmed by Turborepo's own
+   build warning naming every stripped var, and independently verified by
+   reverting `turbo.json` alone and reproducing the identical failure with
+   the same shell-exported env vars, then restoring it and confirming
+   success. Fixed by adding every variable `@oneworld/config#loadEnv()`
+   validates (`packages/config/src/env.ts`) to `turbo.json`'s `globalEnv`.
+
+**Decisions made:** none resolving spec section 35 items.
+
+**Deviations from the spec:** none.
+
+**Gaps surfaced:**
+
+- `apps/admin` isn't deployed yet and has no `vercel.json` of its own - it
+  will need the same treatment (its own Vercel project, Root Directory
+  `apps/admin`, `vercel.json` with a `--filter=@oneworld/admin` build)
+  whenever it's ready to deploy.
+- `turbo.json`'s `globalEnv` list must be kept in sync with
+  `packages/config/src/env.ts`'s Zod schema by hand - adding a new env var
+  to one without the other reproduces exactly the `DATABASE_URL` failure
+  above, just for the new var instead.
+
 ### 2026-07-28 - Phase 1: Airport World and Player Onboarding
 
 **Spec sections touched:** 6 (Onboarding), 7 (Accounts/Ledger), 9 (Housing),
