@@ -9,7 +9,10 @@ The full product and technical specification lives in
 [`ProjectDocumentation/OneWorld_Master_Technical_Document.md`](ProjectDocumentation/OneWorld_Master_Technical_Document.md) -
 that document is the source of truth for game rules, architecture, and
 scope. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) for what
-is actually built versus planned.
+is actually built versus planned, and
+[`ProjectDocumentation/OneWorld_Change_Log.md`](ProjectDocumentation/OneWorld_Change_Log.md)
+for a dated history of what changed, why, and how open spec decisions have
+been resolved.
 
 ## Stack
 
