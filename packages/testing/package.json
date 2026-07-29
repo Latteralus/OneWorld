@@ -1,0 +1,22 @@
+{
+  "name": "@oneworld/testing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared Vitest configuration and test fixtures for OneWorld packages",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vitest-base": "./vitest-base.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist .turbo"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
