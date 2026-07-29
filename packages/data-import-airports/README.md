@@ -37,8 +37,8 @@ import type {
 Run an import:
 
 ```bash
-pnpm --filter @oneworld/data-import-airports import
-# override the source: AIRPORT_IMPORT_SOURCE_URL=... pnpm --filter @oneworld/data-import-airports import
+pnpm --filter @oneworld/data-import-airports import-airports
+# override the source: AIRPORT_IMPORT_SOURCE_URL=... pnpm --filter @oneworld/data-import-airports import-airports
 ```
 
 ## Key invariants

@@ -4,23 +4,23 @@ import { runAirportImport, type AirportImportSink } from "../import.js";
 import { ourAirportsAdapter } from "../adapters/our-airports.adapter.js";
 
 function makeFakeSink() {
-  const upserted: string[] = [];
-  const gameStateInitialized: string[] = [];
+  const upsertBatches: string[][] = [];
+  const gameStateBatches: string[][] = [];
   const sink: AirportImportSink = {
-    async upsertAirport(record) {
-      upserted.push(record.ident);
-      return asAirportId(record.ident);
+    async upsertAirports(records) {
+      upsertBatches.push(records.map((r) => r.record.ident));
+      return new Map(records.map((r) => [r.record.ident, asAirportId(r.record.ident)]));
     },
-    async ensureGameState(airportId) {
-      gameStateInitialized.push(airportId);
+    async ensureGameStates(inputs) {
+      gameStateBatches.push(inputs.map((i) => i.airportId));
     },
   };
-  return { sink, upserted, gameStateInitialized };
+  return { sink, upsertBatches, gameStateBatches };
 }
 
 describe("runAirportImport", () => {
   it("normalizes, upserts, and initializes game state only for preview-eligible rows", async () => {
-    const { sink, upserted, gameStateInitialized } = makeFakeSink();
+    const { sink, upsertBatches, gameStateBatches } = makeFakeSink();
 
     const summary = await runAirportImport(
       [
@@ -50,12 +50,30 @@ describe("runAirportImport", () => {
       skippedUnmapped: 1,
       previewEnabled: 1, // only KBOI is US
     });
-    expect(upserted).toEqual(["KBOI", "EGLL"]);
-    expect(gameStateInitialized).toEqual(["KBOI"]);
+    expect(upsertBatches).toEqual([["KBOI", "EGLL"]]);
+    expect(gameStateBatches).toEqual([["KBOI"]]);
+  });
+
+  it("splits large imports into multiple batches rather than one row at a time", async () => {
+    const { sink, upsertBatches } = makeFakeSink();
+    const rows = Array.from({ length: 1200 }, (_, i) => ({
+      ident: `US-${i}`,
+      type: "medium_airport",
+      iso_country: "US",
+      latitude_deg: 40,
+      longitude_deg: -100,
+    }));
+
+    await runAirportImport(rows, ourAirportsAdapter, sink);
+
+    expect(upsertBatches).toHaveLength(3); // 1200 rows / 500-row batches
+    expect(upsertBatches[0]).toHaveLength(500);
+    expect(upsertBatches[1]).toHaveLength(500);
+    expect(upsertBatches[2]).toHaveLength(200);
   });
 
   it("is safe to run twice - the sink's upsert/ensure semantics make replay idempotent", async () => {
-    const { sink, upserted, gameStateInitialized } = makeFakeSink();
+    const { sink, upsertBatches, gameStateBatches } = makeFakeSink();
     const rows = [
       {
         ident: "KBOI",
@@ -72,7 +90,7 @@ describe("runAirportImport", () => {
     // The orchestrator calls upsert/ensure both times (idempotency is the sink's job,
     // exercised by the real Drizzle repository's onConflictDoUpdate/onConflictDoNothing) -
     // here we just confirm it doesn't skip the second run outright.
-    expect(upserted).toEqual(["KBOI", "KBOI"]);
-    expect(gameStateInitialized).toEqual(["KBOI", "KBOI"]);
+    expect(upsertBatches).toEqual([["KBOI"], ["KBOI"]]);
+    expect(gameStateBatches).toEqual([["KBOI"], ["KBOI"]]);
   });
 });

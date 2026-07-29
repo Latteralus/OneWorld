@@ -1,3 +1,4 @@
+import "@oneworld/config/load-dotenv";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -9,7 +10,10 @@ import { loadEnv } from "@oneworld/config";
  */
 async function main() {
   const env = loadEnv();
-  const sql = postgres(env.DATABASE_URL, { max: 1 });
+  // `prepare: false` is required when DATABASE_URL points at Supabase's
+  // transaction-mode pooler (pgbouncer), which doesn't support prepared
+  // statements - matches the same setting in @oneworld/db#client.ts.
+  const sql = postgres(env.DATABASE_URL, { max: 1, prepare: false });
   const db = drizzle(sql);
 
   console.error(`Applying migrations to ${env.APP_ENV}...`);

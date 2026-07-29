@@ -25,6 +25,10 @@ export class InMemoryAirportRepository implements AirportRepository {
     this.gameStateInitialized.add(input.airportId);
   }
 
+  async ensureGameStates(inputs: EnsureGameStateInput[]): Promise<void> {
+    for (const input of inputs) this.gameStateInitialized.add(input.airportId);
+  }
+
   async search(filters: AirportSearchFilters): Promise<AirportSummary[]> {
     let results = [...this.airports.values()].filter((airport) => airport.previewEnabled);
 

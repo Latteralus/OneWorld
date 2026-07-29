@@ -24,6 +24,10 @@ export class AirportService {
     return this.repo.ensureGameState(input);
   }
 
+  async ensureGameStates(inputs: EnsureGameStateInput[]): Promise<void> {
+    return this.repo.ensureGameStates(inputs);
+  }
+
   async search(filters: AirportSearchFilters): Promise<AirportSummary[]> {
     return this.repo.search(filters);
   }

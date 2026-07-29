@@ -135,7 +135,7 @@ Browser), 28.1 (Auth), 32 (Phase 1 of the roadmap), 35 open item #2.
   parser (`parseCsv`), preview curation (`isPreviewEligible`), an
   orchestrator (`runAirportImport`), a Drizzle catalog writer
   (`DrizzleAirportCatalogRepository`), and a runnable script
-  (`pnpm --filter @oneworld/data-import-airports import`). Verified against
+  (`pnpm --filter @oneworld/data-import-airports import-airports`). Verified against
   the live OurAirports export mirror, not just fixtures.
 - **Airport catalog reads**: `@oneworld/domain-airports` gained
   `AirportService`/`DrizzleAirportRepository` - search/filter, get-by-id,

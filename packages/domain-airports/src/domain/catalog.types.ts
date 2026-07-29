@@ -49,6 +49,8 @@ export interface EnsureGameStateInput {
 export interface AirportRepository {
   /** Creates a zeroed game-state row for a newly-imported airport if one doesn't already exist. */
   ensureGameState(input: EnsureGameStateInput): Promise<void>;
+  /** Batched form of `ensureGameState` - one round trip for many airports (spec section 25.2: bulk imports must not do a round trip per row). */
+  ensureGameStates(inputs: EnsureGameStateInput[]): Promise<void>;
   search(filters: AirportSearchFilters): Promise<AirportSummary[]>;
   getById(airportId: AirportId): Promise<AirportSummary | undefined>;
   /** Airports within `maxDistanceNm` of a point, nearest first, excluding `excludeAirportId` if given. */

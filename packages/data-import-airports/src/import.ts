@@ -2,13 +2,17 @@ import type { AirportId } from "@oneworld/contracts";
 import { isPreviewEligible } from "./preview.js";
 import type { AirportImportAdapter, CanonicalAirportRecord, RawSourceRow } from "./types.js";
 
+/** Rows per round trip. Large enough to matter, small enough to stay well under Postgres's per-statement parameter limit. */
+const BATCH_SIZE = 500;
+
 export interface AirportImportSink {
-  /** Upserts one airport into the canonical catalog and returns its id. */
-  upsertAirport(record: CanonicalAirportRecord, previewEnabled: boolean): Promise<AirportId>;
-  /** Ensures game-state exists for a preview-enabled airport (idempotent). */
-  ensureGameState(
-    airportId: AirportId,
-    physicalTier: CanonicalAirportRecord["physicalTier"],
+  /** Upserts a batch of airports into the canonical catalog; returns each row's id keyed by `ident`. */
+  upsertAirports(
+    records: Array<{ record: CanonicalAirportRecord; previewEnabled: boolean }>,
+  ): Promise<Map<string, AirportId>>;
+  /** Ensures game-state exists for a batch of preview-enabled airports (idempotent). */
+  ensureGameStates(
+    inputs: Array<{ airportId: AirportId; physicalTier: CanonicalAirportRecord["physicalTier"] }>,
   ): Promise<void>;
 }
 
@@ -19,11 +23,19 @@ export interface AirportImportSummary {
   previewEnabled: number;
 }
 
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
 /**
  * Orchestrates one import run: normalize each raw row through the adapter,
  * skip rows the adapter can't map (spec section 12.1), decide preview
- * eligibility, and upsert. Safe to run repeatedly - every write is an
- * upsert/ensure, never a duplicate insert (spec section 25.2).
+ * eligibility, and upsert in batches (spec section 25.2: no unbounded
+ * per-row round trips - a real-world run is tens of thousands of rows).
+ * Safe to run repeatedly - every write is an upsert/ensure, never a
+ * duplicate insert.
  */
 export async function runAirportImport(
   rows: RawSourceRow[],
@@ -37,6 +49,7 @@ export async function runAirportImport(
     previewEnabled: 0,
   };
 
+  const normalized: Array<{ record: CanonicalAirportRecord; previewEnabled: boolean }> = [];
   for (const row of rows) {
     const record = adapter.normalize(row);
     if (!record) {
@@ -47,10 +60,24 @@ export async function runAirportImport(
 
     const previewEnabled = isPreviewEligible(record);
     if (previewEnabled) summary.previewEnabled += 1;
+    normalized.push({ record, previewEnabled });
+  }
 
-    const airportId = await sink.upsertAirport(record, previewEnabled);
-    if (previewEnabled) {
-      await sink.ensureGameState(airportId, record.physicalTier);
+  for (const batch of chunk(normalized, BATCH_SIZE)) {
+    const idByIdent = await sink.upsertAirports(batch);
+
+    const gameStateInputs = batch
+      .filter((entry) => entry.previewEnabled)
+      .map((entry) => {
+        const airportId = idByIdent.get(entry.record.ident);
+        if (!airportId) {
+          throw new Error(`Upsert did not return an id for airport ident "${entry.record.ident}"`);
+        }
+        return { airportId, physicalTier: entry.record.physicalTier };
+      });
+
+    if (gameStateInputs.length > 0) {
+      await sink.ensureGameStates(gameStateInputs);
     }
   }
 

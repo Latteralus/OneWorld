@@ -3,14 +3,17 @@ import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
 import type { NextConfig } from "next";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const monorepoRoot = path.resolve(__dirname, "../..");
+const monorepoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-// Next.js only auto-loads .env files from its own directory (apps/web), but
-// this monorepo keeps a single .env at the repo root (README "Setup", spec
-// section 22.1) - load it explicitly so `next dev`/`next build`/`next start`
-// see the same variables every other app/package does via @oneworld/config#loadEnv.
-// A no-op on Vercel, where env vars come from Project Settings, not a file.
+// Next.js compiles next.config.ts with its own minimal transpiler, separate
+// from the main webpack pipeline (whose extensionAlias below lets our
+// workspace packages' ".js"-specifier-for-a-".ts"-file convention resolve) -
+// that means we cannot `import "@oneworld/config"` here to get its
+// centralized env loading. Load the root .env directly instead so
+// `NEXT_PUBLIC_*` vars are in `process.env` before webpack's DefinePlugin
+// inlines them into the client bundle. A no-op on Vercel (no .env file;
+// vars come from Project Settings) or once @oneworld/config's own module
+// load has already populated `process.env` (dotenv never overrides).
 loadDotenv({ path: path.resolve(monorepoRoot, ".env") });
 
 const nextConfig: NextConfig = {

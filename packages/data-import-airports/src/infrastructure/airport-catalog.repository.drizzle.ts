@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import type { DbOrTx } from "@oneworld/db";
 import { schema } from "@oneworld/db";
 import type { AirportId } from "@oneworld/contracts";
@@ -12,33 +13,57 @@ import type { CanonicalAirportRecord } from "../types.js";
 export class DrizzleAirportCatalogRepository {
   constructor(private readonly db: DbOrTx) {}
 
-  async upsertAirport(record: CanonicalAirportRecord, previewEnabled: boolean): Promise<AirportId> {
-    const values = {
-      ident: record.ident,
-      icao: record.icao,
-      localCode: record.localCode,
-      name: record.name,
-      municipality: record.municipality,
-      regionCode: record.regionCode,
-      countryCode: record.countryCode,
-      latitude: record.latitude,
-      longitude: record.longitude,
-      elevationFt: record.elevationFt,
-      physicalTier: record.physicalTier,
-      sourceStatus: record.sourceStatus,
-      previewEnabled,
-    };
+  /**
+   * Batched upsert - one round trip for many airports rather than one per
+   * row (a real-world import is ~48k rows; row-by-row upserts over a
+   * network connection took hours, see the change log). Returns each
+   * upserted row's id keyed by `ident` rather than relying on `RETURNING`
+   * preserving input order, which Postgres doesn't guarantee.
+   */
+  async upsertAirports(
+    records: Array<{ record: CanonicalAirportRecord; previewEnabled: boolean }>,
+  ): Promise<Map<string, AirportId>> {
+    if (records.length === 0) return new Map();
 
-    const [row] = await this.db
+    const rows = await this.db
       .insert(schema.airports)
-      .values(values)
+      .values(
+        records.map(({ record, previewEnabled }) => ({
+          ident: record.ident,
+          icao: record.icao,
+          localCode: record.localCode,
+          name: record.name,
+          municipality: record.municipality,
+          regionCode: record.regionCode,
+          countryCode: record.countryCode,
+          latitude: record.latitude,
+          longitude: record.longitude,
+          elevationFt: record.elevationFt,
+          physicalTier: record.physicalTier,
+          sourceStatus: record.sourceStatus,
+          previewEnabled,
+        })),
+      )
       .onConflictDoUpdate({
         target: schema.airports.ident,
-        set: { ...values, updatedAt: new Date() },
+        set: {
+          icao: sql`excluded.icao`,
+          localCode: sql`excluded.local_code`,
+          name: sql`excluded.name`,
+          municipality: sql`excluded.municipality`,
+          regionCode: sql`excluded.region_code`,
+          countryCode: sql`excluded.country_code`,
+          latitude: sql`excluded.latitude`,
+          longitude: sql`excluded.longitude`,
+          elevationFt: sql`excluded.elevation_ft`,
+          physicalTier: sql`excluded.physical_tier`,
+          sourceStatus: sql`excluded.source_status`,
+          previewEnabled: sql`excluded.preview_enabled`,
+          updatedAt: new Date(),
+        },
       })
-      .returning({ id: schema.airports.id });
+      .returning({ id: schema.airports.id, ident: schema.airports.ident });
 
-    if (!row) throw new Error(`Failed to upsert airport: ${record.ident}`);
-    return row.id as AirportId;
+    return new Map(rows.map((row) => [row.ident, row.id as AirportId]));
   }
 }

@@ -1,3 +1,4 @@
+import "@oneworld/config/load-dotenv";
 import { getDb } from "@oneworld/db";
 import { AirportService, DrizzleAirportRepository } from "@oneworld/domain-airports";
 import { ourAirportsAdapter } from "../adapters/our-airports.adapter.js";
@@ -11,7 +12,7 @@ const DEFAULT_SOURCE_URL = "https://davidmegginson.github.io/ourairports-data/ai
 /**
  * Runnable airport-import job (spec section 12.1, 25.1). Not a Scheduler-registered
  * worker job (airport import isn't in the fixed section 25.1 job list) -
- * run manually or via an external cron: `pnpm --filter @oneworld/data-import-airports import`.
+ * run manually or via an external cron: `pnpm --filter @oneworld/data-import-airports import-airports`.
  * Safe to run repeatedly.
  */
 async function main() {
@@ -30,12 +31,15 @@ async function main() {
   const airportService = new AirportService(new DrizzleAirportRepository(db));
 
   const summary = await runAirportImport(rows, ourAirportsAdapter, {
-    upsertAirport: (record, previewEnabled) => catalogRepo.upsertAirport(record, previewEnabled),
-    ensureGameState: (airportId, physicalTier) =>
-      airportService.ensureGameState({ airportId, physicalTier }),
+    upsertAirports: (records) => catalogRepo.upsertAirports(records),
+    ensureGameStates: (inputs) => airportService.ensureGameStates(inputs),
   });
 
   console.error(`Import complete: ${JSON.stringify(summary)}`);
+  // getDb()'s postgres.js pool keeps its sockets open indefinitely, which
+  // keeps this one-shot script's process alive after main() resolves -
+  // close it explicitly so the process exits instead of hanging.
+  await db.$client.end();
 }
 
 main().catch((error) => {

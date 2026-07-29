@@ -60,15 +60,21 @@ export class DrizzleAirportRepository implements AirportRepository {
   constructor(private readonly db: DbOrTx) {}
 
   async ensureGameState(input: EnsureGameStateInput): Promise<void> {
-    const basePassengerTarget = calculateAirportPassengerTarget(input.physicalTier, "quiet");
+    await this.ensureGameStates([input]);
+  }
+
+  async ensureGameStates(inputs: EnsureGameStateInput[]): Promise<void> {
+    if (inputs.length === 0) return;
     await this.db
       .insert(schema.airportGameState)
-      .values({
-        airportId: input.airportId,
-        activityScore: 0,
-        activityClass: "quiet",
-        basePassengerTarget,
-      })
+      .values(
+        inputs.map((input) => ({
+          airportId: input.airportId,
+          activityScore: 0,
+          activityClass: "quiet" as const,
+          basePassengerTarget: calculateAirportPassengerTarget(input.physicalTier, "quiet"),
+        })),
+      )
       .onConflictDoNothing();
   }
 

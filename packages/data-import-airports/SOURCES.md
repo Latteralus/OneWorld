@@ -8,7 +8,7 @@ data-quality limitations for every adapter.
 
 - **Source**: https://ourairports.com/data/ (public domain / CC0-equivalent
   per OurAirports' stated terms - verify current terms before production
-  use). `pnpm --filter @oneworld/data-import-airports import` pulls the
+  use). `pnpm --filter @oneworld/data-import-airports import-airports` pulls the
   full-database CSV export from
   https://davidmegginson.github.io/ourairports-data/airports.csv (a
   well-known static mirror of the same OurAirports export, chosen for CDN

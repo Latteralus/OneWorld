@@ -1,5 +1,9 @@
 import { defineConfig } from "drizzle-kit";
-import "dotenv/config";
+// Side-effect import: loads the monorepo root .env - "dotenv/config" alone
+// only checks the current working directory, which is this package's own
+// folder when run via `pnpm --filter @oneworld/db generate`, not the repo
+// root where the real .env lives.
+import "@oneworld/config/load-dotenv";
 
 export default defineConfig({
   schema: "./src/schema/index.ts",

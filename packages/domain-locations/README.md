@@ -31,7 +31,7 @@ Seed the starting cities from a terminal (run _after_ the airport import, so
 `worldConfig.startingCities`' airport idents resolve):
 
 ```bash
-pnpm --filter @oneworld/data-import-airports import
+pnpm --filter @oneworld/data-import-airports import-airports
 pnpm --filter @oneworld/domain-locations seed
 ```
 
