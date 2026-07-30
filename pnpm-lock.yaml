@@ -874,9 +874,21 @@ importers:
       '@oneworld/db':
         specifier: workspace:*
         version: link:../db
+      '@oneworld/domain-finance':
+        specifier: workspace:*
+        version: link:../domain-finance
+      '@oneworld/domain-locations':
+        specifier: workspace:*
+        version: link:../domain-locations
+      '@oneworld/domain-vehicles':
+        specifier: workspace:*
+        version: link:../domain-vehicles
       '@oneworld/utils':
         specifier: workspace:*
         version: link:../utils
+      drizzle-orm:
+        specifier: ^0.38.3
+        version: 0.38.4(@types/react@19.2.17)(postgres@3.4.9)(react@19.2.8)
     devDependencies:
       '@oneworld/testing':
         specifier: workspace:*

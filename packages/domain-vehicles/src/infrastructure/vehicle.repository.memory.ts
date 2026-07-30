@@ -57,6 +57,8 @@ export class InMemoryVehicleRepository implements VehicleRepository {
     vehicleTypeId: string;
     vehicleTypeKey: string;
     weeklyMaintenanceCents: Cents;
+    effectiveTravelSpeedMph: number;
+    fuelEfficiencyMpg: number;
     currentCityId: CityId;
     mileage: number;
     fuelGallons: number;
@@ -73,6 +75,8 @@ export class InMemoryVehicleRepository implements VehicleRepository {
       condition: input.condition,
       estimatedValueCents: input.estimatedValueCents,
       weeklyMaintenanceCents: input.weeklyMaintenanceCents,
+      effectiveTravelSpeedMph: input.effectiveTravelSpeedMph,
+      fuelEfficiencyMpg: input.fuelEfficiencyMpg,
       nextMaintenanceDueAt: input.nextMaintenanceDueAt,
     };
     this.vehicles.set(vehicle.id, vehicle);
@@ -91,6 +95,12 @@ export class InMemoryVehicleRepository implements VehicleRepository {
     const existing = this.vehicles.get(vehicleId);
     if (!existing) throw new Error(`Unknown vehicle: ${vehicleId}`);
     this.vehicles.set(vehicleId, { ...existing, nextMaintenanceDueAt });
+  }
+
+  async advanceMileage(vehicleId: VehicleId, mileage: number): Promise<void> {
+    const existing = this.vehicles.get(vehicleId);
+    if (!existing) throw new Error(`Unknown vehicle: ${vehicleId}`);
+    this.vehicles.set(vehicleId, { ...existing, mileage });
   }
 
   vehicleTypeCount(): number {

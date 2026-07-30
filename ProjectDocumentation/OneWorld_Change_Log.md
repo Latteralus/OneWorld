@@ -58,10 +58,86 @@ Tracks resolution of the fifteen open items from spec section 35. "Resolved (pla
 
 - **Worker locking**: `apps/worker`'s `Scheduler` has no distributed lock/claim mechanism (spec section 25.2). Fine for a single worker instance; required before running more than one.
 - **Outbox has writers, no reader**: every Phase 2 worker orchestrator writes to `domain_events` via `@oneworld/db#insertDomainEvent`, but no consumer/dispatcher processes the table yet. Notifications are created by direct calls from the orchestrators instead, not via an outbox-driven consumer - see the Phase 2 entry below.
+- **No per-vehicle travel lock**: "vehicle cannot be reused while traveling" (Phase 3 exit criterion) currently relies on the one-vehicle-per-player game model (no purchase/multi-vehicle flow exists) plus the per-player active-travel guard in `@oneworld/domain-travel`'s `TravelService.startTravel`. A real per-vehicle lock (e.g. a partial unique index on `ground_travel(vehicle_id)`) is needed once multiple vehicle ownership ships - see the Phase 3 entry below.
 
 ---
 
 ## Change History
+
+### 2026-07-29 - Phase 3: Ground Travel
+
+**Spec sections touched:** 10 (Vehicle System), 11 (Ground Travel System),
+24.2-24.4 (Services/Domain Events), 25.1 (Ground-Travel-Completion Worker
+Job), 32 (Phase 3 of the roadmap).
+
+**What changed:**
+
+- **`@oneworld/domain-vehicles`**: `PlayerVehicle` gained
+  `effectiveTravelSpeedMph`/`fuelEfficiencyMpg` (joined from
+  `vehicle_types`, same pattern as `weeklyMaintenanceCents` from Phase 2)
+  and `VehicleService.recordTripDistance` (advances mileage after a
+  completed trip via the existing `calculateMileageAfterTrip`).
+- **`@oneworld/domain-travel`**: gained its `application`/`infrastructure`
+  layers - `TravelService` (`quoteTravel`, `startTravel`,
+  `completeDueTravel`, all free of cross-domain writes, mirroring Phase
+  2's Employment/Housing/Vehicle services), `Drizzle`/`InMemoryTravelRepository`,
+  and the two-function composition root
+  (`infrastructure/travel.transaction.ts`):
+  `runStartGroundTravelTransaction` (location/one-trip/funds guards,
+  ledger charge, mileage update, `IN_GROUND_TRANSIT` transition, all in
+  one `db.transaction`, following `runOnboardingTransaction`'s pattern)
+  and `runGroundTravelCompletionSweep` (moves arrived players to their
+  destination). New pure rules: `calculateGroundTravelQuote` (composes
+  the existing distance/duration/fare math plus
+  `domain-vehicles`' fuel calculations), `doesLocationMatchOrigin` (the
+  section-11.1 "must be at the origin" guard, which also doubles as the
+  multiple-locations guard), `isTravelDue`, `toEndpointRef`.
+- **`apps/worker`**: `ground-travel-completion` now calls
+  `runGroundTravelCompletionSweep` instead of no-op'ing.
+- Two new `buildIdempotencyKey` builders (`groundTravelFare`,
+  `groundTravelFuel`) and one new domain error code (`NO_VEHICLE_OWNED`) -
+  `TRAVEL_ALREADY_ACTIVE`, `ORIGIN_DESTINATION_SAME`,
+  `PLAYER_NOT_AT_ORIGIN`, and `INSUFFICIENT_FUNDS` were all already
+  defined (reserved from Phase 0) and unused until now.
+
+**Decisions made:** no spec section 35 open items resolved (items #8,
+#13, #15 remain open, untouched by ground travel). Several new
+implementation-level placeholder decisions, none tracked in the
+fifteen-item log since they're below that level of granularity:
+
+- `PREPARING` is real but instantaneous - no async prep step exists in
+  the preview; `startTravel` inserts `PREPARING` then immediately departs
+  within the same call.
+- A new flat `vehicleConfig.groundFuelPricePerGallonDollars` ($3.50)
+  stands in for spec 10.4's "regional ground-fuel price" - no
+  location-based pricing exists yet, and the airport-scoped
+  `@oneworld/domain-fuel` system doesn't cover ground vehicles.
+  Auto-purchased fuel funds exactly what a trip burns, so
+  `PlayerVehicle.fuelGallons` is unaffected by ground travel.
+  `playerVehicles.currentCityId` is likewise not updated by travel - not
+  needed for this phase's exit criteria.
+- Insufficient funds hard-rejects the whole start-travel transaction
+  (unlike Phase 2's skip-and-retry recurring charges) - travel is
+  voluntary and avoidable, so nothing is written on failure.
+- No per-vehicle lock (see "Known architectural gaps" above) and no
+  cancel/interrupt/failed/under-review handling (not required by the
+  stated exit criteria).
+
+**Deviations from the spec:** none intentional.
+
+**Gaps surfaced:**
+
+- No live Supabase/Postgres instance was available in this environment
+  (same constraint as every prior phase). `TravelService`/rule logic has
+  unit-test coverage against in-memory repositories; the two `run*Transaction`
+  orchestrators and the worker job were reviewed against the existing
+  schema but not exercised against a real database or a running worker
+  process.
+- No web UI was added for travel quoting/starting - Phase 3 delivered the
+  backend services and worker job only, matching the precedent Phase 2
+  set (no UI for job postings/rent/maintenance either) and documented
+  there for the same reason: the roadmap's stated exit criteria are
+  backend-verifiable without one.
 
 ### 2026-07-29 - Phase 2: Employment and Recurring Economy
 

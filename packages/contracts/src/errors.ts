@@ -23,6 +23,7 @@ export const domainErrorCodes = [
   "USERNAME_TAKEN",
   "JOB_POSTING_UNAVAILABLE",
   "APPLICATION_NOT_ACCEPTED",
+  "NO_VEHICLE_OWNED",
 ] as const;
 
 export type DomainErrorCode = (typeof domainErrorCodes)[number];

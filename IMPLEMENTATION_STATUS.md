@@ -80,10 +80,21 @@ see the note at the bottom of this file.
 
 ## Phase 3 - Ground Travel
 
-🟡 Pure math complete and tested: `@oneworld/domain-travel`
-(`estimateRoadDistanceMiles`, `calculateGroundTravelDurationMinutes`,
-`calculateBusDurationMinutes`, `calculateBusFareCents`). No `TravelService`,
-no persistence, `ground-travel-completion` worker job is a no-op.
+✅ `@oneworld/domain-travel`'s `TravelService`/`DrizzleTravelRepository`
+(quote, start, complete-due-travel) plus
+`calculateGroundTravelQuote`/`doesLocationMatchOrigin`/`isTravelDue`.
+`infrastructure/travel.transaction.ts`'s `runStartGroundTravelTransaction`/
+`runGroundTravelCompletionSweep` compose location/vehicle/finance in one
+`db.transaction`, following the `runOnboardingTransaction` pattern -
+starting travel enforces the origin/one-trip/funds guards atomically and
+moves the player to `IN_GROUND_TRANSIT`; the worker's
+`ground-travel-completion` job (`apps/worker/src/jobs/ground-travel.job.ts`)
+is now real, moving arrived players to their destination without a
+browser open. `@oneworld/domain-vehicles` gained `recordTripDistance` and
+exposes `effectiveTravelSpeedMph`/`fuelEfficiencyMpg` on `PlayerVehicle`
+for quoting. No web UI - a deliberate scope cut matching Phase 2's
+precedent (see the Phase 3 change log entry). Not exercised against a
+live database - see the note at the bottom of this file.
 
 ## Phase 4 - Passenger Pools and Job Builder
 
@@ -140,9 +151,10 @@ or load tests yet.
   repositories can be composed against the same `tx` inside one
   `db.transaction(...)` call - the pattern `OnboardingService`/
   `runOnboardingTransaction` established in Phase 1 and now also used by
-  every Phase 2 worker-job orchestrator (`apps/worker/src/jobs/{employment,housing,vehicle}.job.ts`).
-  Follow this when any future orchestration needs the same guarantee
-  (e.g. Phase 6 flight settlement).
+  every Phase 2 worker-job orchestrator (`apps/worker/src/jobs/{employment,housing,vehicle}.job.ts`)
+  and Phase 3's `@oneworld/domain-travel#runStartGroundTravelTransaction`/
+  `runGroundTravelCompletionSweep`. Follow this when any future
+  orchestration needs the same guarantee (e.g. Phase 6 flight settlement).
 - **Not exercised end-to-end**: no live Supabase/Postgres instance is
   available in this environment. Every service (Phase 0-2) has
   unit-test coverage against in-memory repositories, the web app builds

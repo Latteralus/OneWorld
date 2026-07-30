@@ -29,6 +29,8 @@ export interface PlayerVehicle {
   estimatedValueCents: Cents;
   weeklyMaintenanceCents: Cents;
   nextMaintenanceDueAt: Date;
+  effectiveTravelSpeedMph: number;
+  fuelEfficiencyMpg: number;
 }
 
 /**
@@ -77,6 +79,8 @@ export interface VehicleRepository {
     /** Carried through onto the returned `PlayerVehicle` (the DB row only stores the FK id). */
     vehicleTypeKey: string;
     weeklyMaintenanceCents: Cents;
+    effectiveTravelSpeedMph: number;
+    fuelEfficiencyMpg: number;
     currentCityId: CityId;
     mileage: number;
     fuelGallons: number;
@@ -89,4 +93,6 @@ export interface VehicleRepository {
   listVehiclesDueForMaintenance(now: Date): Promise<PlayerVehicle[]>;
   /** Called only after a successful charge - a failed charge leaves the due date untouched so the next sweep retries it. */
   advanceMaintenance(vehicleId: VehicleId, nextMaintenanceDueAt: Date): Promise<void>;
+  /** Persists mileage after a completed trip (spec section 10.3: "ground travel increases mileage by route distance"). */
+  advanceMileage(vehicleId: VehicleId, mileage: number): Promise<void>;
 }

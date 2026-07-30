@@ -5,7 +5,7 @@ import type {
   PlayerVehicle,
   VehicleRepository,
 } from "../domain/vehicle.types.js";
-import { pickRandomStartingMileage } from "../domain/vehicle.rules.js";
+import { calculateMileageAfterTrip, pickRandomStartingMileage } from "../domain/vehicle.rules.js";
 
 export interface MaintenanceDue {
   vehicle: PlayerVehicle;
@@ -49,6 +49,8 @@ export class VehicleService {
       vehicleTypeId,
       vehicleTypeKey: input.typeKey,
       weeklyMaintenanceCents: input.weeklyMaintenanceCents,
+      effectiveTravelSpeedMph: input.speedMph,
+      fuelEfficiencyMpg: input.fuelEfficiencyMpg,
       currentCityId: input.currentCityId,
       mileage: pickRandomStartingMileage(input.mileageMin, input.mileageMax),
       // The starting car is a fully-fueled asset; fuel purchases from here on
@@ -86,5 +88,21 @@ export class VehicleService {
   }): Promise<void> {
     if (!input.paymentSucceeded) return;
     await this.repo.advanceMaintenance(input.vehicleId, addDays(input.previousDueAt, 7));
+  }
+
+  /**
+   * Records mileage from a completed ground trip (spec section 10.3).
+   * Takes `currentMileage` from the caller (who already has the vehicle
+   * row from a prior read) rather than adding a separate lookup here.
+   */
+  async recordTripDistance(input: {
+    vehicleId: VehicleId;
+    currentMileage: number;
+    distanceMiles: number;
+  }): Promise<void> {
+    await this.repo.advanceMileage(
+      input.vehicleId,
+      calculateMileageAfterTrip(input.currentMileage, input.distanceMiles),
+    );
   }
 }

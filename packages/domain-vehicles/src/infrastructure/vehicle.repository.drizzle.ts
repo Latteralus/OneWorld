@@ -11,10 +11,16 @@ import type {
   VehicleRepository,
 } from "../domain/vehicle.types.js";
 
+interface VehicleTypeExtras {
+  weeklyMaintenanceCents: Cents;
+  effectiveTravelSpeedMph: number;
+  fuelEfficiencyMpg: number;
+}
+
 function toDomainVehicle(
   row: typeof schema.playerVehicles.$inferSelect,
   vehicleTypeKey: string,
-  weeklyMaintenanceCents: Cents,
+  typeExtras: VehicleTypeExtras,
 ): PlayerVehicle {
   return {
     id: row.id as VehicleId,
@@ -24,7 +30,9 @@ function toDomainVehicle(
     fuelGallons: row.fuelGallons,
     condition: row.condition,
     estimatedValueCents: cents(row.estimatedValueCents),
-    weeklyMaintenanceCents,
+    weeklyMaintenanceCents: typeExtras.weeklyMaintenanceCents,
+    effectiveTravelSpeedMph: typeExtras.effectiveTravelSpeedMph,
+    fuelEfficiencyMpg: typeExtras.fuelEfficiencyMpg,
     // Only unset between vehicle grant and the first maintenance sweep in
     // theory; grantStartingVehicle always sets it, so this should never be
     // reached in practice, but the column is nullable in the schema.
@@ -85,6 +93,8 @@ export class DrizzleVehicleRepository implements VehicleRepository {
     vehicleTypeId: string;
     vehicleTypeKey: string;
     weeklyMaintenanceCents: Cents;
+    effectiveTravelSpeedMph: number;
+    fuelEfficiencyMpg: number;
     currentCityId: CityId;
     mileage: number;
     fuelGallons: number;
@@ -106,7 +116,11 @@ export class DrizzleVehicleRepository implements VehicleRepository {
       })
       .returning();
     if (!inserted) throw new Error("Failed to insert player vehicle");
-    return toDomainVehicle(inserted, input.vehicleTypeKey, input.weeklyMaintenanceCents);
+    return toDomainVehicle(inserted, input.vehicleTypeKey, {
+      weeklyMaintenanceCents: input.weeklyMaintenanceCents,
+      effectiveTravelSpeedMph: input.effectiveTravelSpeedMph,
+      fuelEfficiencyMpg: input.fuelEfficiencyMpg,
+    });
   }
 
   async findVehicleForPlayer(playerId: PlayerId): Promise<PlayerVehicle | undefined> {
@@ -115,6 +129,8 @@ export class DrizzleVehicleRepository implements VehicleRepository {
         vehicle: schema.playerVehicles,
         vehicleTypeKey: schema.vehicleTypes.key,
         weeklyMaintenanceCents: schema.vehicleTypes.weeklyMaintenanceCents,
+        speedMph: schema.vehicleTypes.speedMph,
+        fuelEfficiencyMpg: schema.vehicleTypes.fuelEfficiencyMpg,
       })
       .from(schema.playerVehicles)
       .innerJoin(
@@ -123,7 +139,11 @@ export class DrizzleVehicleRepository implements VehicleRepository {
       )
       .where(eq(schema.playerVehicles.playerId, playerId));
     return row
-      ? toDomainVehicle(row.vehicle, row.vehicleTypeKey, cents(row.weeklyMaintenanceCents))
+      ? toDomainVehicle(row.vehicle, row.vehicleTypeKey, {
+          weeklyMaintenanceCents: cents(row.weeklyMaintenanceCents),
+          effectiveTravelSpeedMph: row.speedMph,
+          fuelEfficiencyMpg: row.fuelEfficiencyMpg,
+        })
       : undefined;
   }
 
@@ -133,6 +153,8 @@ export class DrizzleVehicleRepository implements VehicleRepository {
         vehicle: schema.playerVehicles,
         vehicleTypeKey: schema.vehicleTypes.key,
         weeklyMaintenanceCents: schema.vehicleTypes.weeklyMaintenanceCents,
+        speedMph: schema.vehicleTypes.speedMph,
+        fuelEfficiencyMpg: schema.vehicleTypes.fuelEfficiencyMpg,
       })
       .from(schema.playerVehicles)
       .innerJoin(
@@ -141,7 +163,11 @@ export class DrizzleVehicleRepository implements VehicleRepository {
       )
       .where(lte(schema.playerVehicles.nextMaintenanceDueAt, now));
     return rows.map((row) =>
-      toDomainVehicle(row.vehicle, row.vehicleTypeKey, cents(row.weeklyMaintenanceCents)),
+      toDomainVehicle(row.vehicle, row.vehicleTypeKey, {
+        weeklyMaintenanceCents: cents(row.weeklyMaintenanceCents),
+        effectiveTravelSpeedMph: row.speedMph,
+        fuelEfficiencyMpg: row.fuelEfficiencyMpg,
+      }),
     );
   }
 
@@ -150,5 +176,9 @@ export class DrizzleVehicleRepository implements VehicleRepository {
       .update(schema.playerVehicles)
       .set({ nextMaintenanceDueAt })
       .where(eq(schema.playerVehicles.id, vehicleId));
+  }
+
+  async advanceMileage(vehicleId: VehicleId, mileage: number): Promise<void> {
+    await this.db.update(schema.playerVehicles).set({ mileage }).where(eq(schema.playerVehicles.id, vehicleId));
   }
 }

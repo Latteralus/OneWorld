@@ -17,6 +17,8 @@ export const buildIdempotencyKey = {
   housingRent: (tenancyId: string, isoWeekKey: string) => `housing:${tenancyId}:rent:${isoWeekKey}`,
   vehicleMaintenance: (vehicleId: string, isoWeekKey: string) =>
     `vehicle:${vehicleId}:maintenance:${isoWeekKey}`,
+  groundTravelFare: (travelId: string) => `travel:${travelId}:fare`,
+  groundTravelFuel: (travelId: string) => `travel:${travelId}:fuel`,
   flightSettlement: (flightId: string) => `flight:${flightId}:settlement`,
   trainingTuition: (enrollmentId: string) => `training:${enrollmentId}:tuition`,
 };

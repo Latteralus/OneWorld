@@ -41,6 +41,8 @@ describe("VehicleService.grantStartingVehicle", () => {
     expect(vehicle.estimatedValueCents).toBe(50_000);
     expect(vehicle.mileage).toBeGreaterThanOrEqual(170_000);
     expect(vehicle.mileage).toBeLessThanOrEqual(235_000);
+    expect(vehicle.effectiveTravelSpeedMph).toBe(55);
+    expect(vehicle.fuelEfficiencyMpg).toBe(24);
   });
 
   it("does not create a duplicate vehicle type row for repeated grants of the same key", async () => {
@@ -162,5 +164,38 @@ describe("VehicleService maintenance sweep (listDueForMaintenance / recordMainte
     const stillDue = await service.listDueForMaintenance(dueAt);
     expect(stillDue).toHaveLength(1);
     expect(stillDue[0]?.vehicle.nextMaintenanceDueAt).toEqual(dueAt);
+  });
+});
+
+describe("VehicleService.recordTripDistance", () => {
+  it("advances mileage by the route distance (spec section 10.3)", async () => {
+    const { service } = makeService();
+    const vehicle = await service.grantStartingVehicle({
+      playerId: "player-1" as PlayerId,
+      currentCityId: "city-1" as CityId,
+      typeKey: "starting_hunda_attord",
+      name: "1996 Hunda Attord",
+      valueCents: cents(50_000),
+      speedMph: 55,
+      fuelEfficiencyMpg: 24,
+      tankCapacityGallons: 16,
+      expectedLifespanMiles: 250_000,
+      weeklyMaintenanceCents: cents(2_500),
+      quality: "very_poor",
+      reliability: "low",
+      statusScore: 0,
+      mileageMin: 200_000,
+      mileageMax: 200_000,
+      nextMaintenanceDueAt: new Date("2026-08-04T00:00:00Z"),
+    });
+
+    await service.recordTripDistance({
+      vehicleId: vehicle.id,
+      currentMileage: vehicle.mileage,
+      distanceMiles: 42,
+    });
+
+    const updated = await service.getVehicleForPlayer("player-1" as PlayerId);
+    expect(updated?.mileage).toBe(200_042);
   });
 });
